@@ -87,10 +87,6 @@ sub build_ext {
     return $ext;
 }
 
-sub clear {
-    my $self = shift;
-}
-
 sub build_raw {
     my $self = shift;
 
@@ -102,10 +98,10 @@ sub build_raw {
     return do { local $/; <$fh> };
 }
 
-sub build_content_and_meta {
+sub build_meta {
     my $self    = shift;
 
-    croak 'build_content_and_meta needs to be overwritten by subclass';
+    croak 'build_meta needs to be overwritten by subclass';
 }
 
 sub build_html {

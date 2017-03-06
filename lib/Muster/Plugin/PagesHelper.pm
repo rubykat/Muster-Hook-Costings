@@ -113,12 +113,18 @@ sub _serve_page {
     my $path = $c->param('cpath') // '';
 
     my $leaf = $self->{pages}->find($path);
-    unless (defined $leaf) {
+    unless (defined $leaf)
+    {
         $c->reply->not_found;
         return;
     }
 
     my $html = $leaf->html();
+    unless (defined $html)
+    {
+        $c->reply->not_found;
+        return;
+    }
 
     $c->stash('path' => $path);
     $c->stash('content' => $html);

@@ -22,14 +22,12 @@ has parent_node => undef;
 has path        => '';
 has path_prefix => '';
 has name        => sub { shift->build_name };
-has meta        => sub { {} };
 has title       => sub { shift->build_title };
 
 # Since this needs to be able to be cleared,
 # don't use the Mojo mechanism
 sub raw {
     my $self = shift;
-    my $value = shift;
     if (!exists $self->{raw})
     {
         $self->{raw} = $self->build_raw();
@@ -50,11 +48,21 @@ sub html {
     return $self->{html};
 }
 
+sub meta {
+    my $self = shift;
+    if (!exists $self->{meta})
+    {
+        $self->{meta} = $self->build_meta();
+    }
+    return $self->{meta};
+}
+
 sub decache {
     my $self = shift;
     
     delete $self->{raw};
     delete $self->{html};
+    delete $self->{meta};
 }
 
 sub build_name {
@@ -72,11 +80,16 @@ sub build_raw {
     croak 'build_raw needs to be overwritten by subclass';
 }
 
+sub build_meta {
+    my $self = shift;
+    croak 'build_meta needs to be overwritten by subclass';
+}
+
 sub build_title {
     my $self = shift;
 
     # try to extract title
-    return $self->meta->{title} if exists $self->meta->{title};
+    return $self->meta->{title} if exists $self->{meta} and exists $self->meta->{title};
     return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
     return $self->name;
 }
