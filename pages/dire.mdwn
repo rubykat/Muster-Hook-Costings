@@ -1,0 +1,8 @@
+# Dire
+
+This page has a directory below it too. With the same name.
+This is supposed to work.
+Like with ikiwiki.
+
+* [Boo](dire/boo)
+* [Baz](dire/baz)

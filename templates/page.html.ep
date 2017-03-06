@@ -1,0 +1,12 @@
+% layout 'foil';
+% content_for 'head_extra' => begin
+<link rel="stylesheet" href="<%= url_for('/css') %>/muster.css" type="text/css" />
+% end
+% content_for 'verso' => begin
+<nav><%== muster_page_related_list %></nav>
+% end
+% content_for 'recto' => begin
+<p class="total"><%= muster_total_pages %> pages</p>
+<%== foil_theme_selector %>
+% end
+<%== $content %>

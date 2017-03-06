@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+
+# ABSTRACT: muster - bookmark web application
+# PODNAME: muster
+=head1 NAME
+
+muster - bookmark web application
+
+=head1 SYNOPSIS
+
+muster COMMAND
+
+=head1 DESCRIPTION
+
+Muster is a content management system.
+It uses the Mojolicious framework.
+It understands SQLite databases.
+
+=cut
+
+use common::sense;
+use FindBin '$Bin';
+use lib "$Bin/../lib";
+use Muster;
+use Muster::Generator;
+use Mojolicious;
+
+# Check commands
+if (defined $ARGV[0] and $ARGV[0] eq 'init')
+{
+    print "generating muster boilerplate...\n";
+    Muster::Generator->new->init;
+    print "done.\n";
+    exit;
+}
+elsif (defined $ARGV[0] and $ARGV[0] eq 'version') {
+    print "This is Muster $Muster::VERSION";
+    print " using Mojolicious $Mojolicious::VERSION on perl $^V\n";
+    # don't exit, we want the mojo version too
+}
+elsif (defined $ARGV[0] and $ARGV[0] eq 'help') {
+    print <<'EOD';
+USAGE: muster COMMAND
+
+Muster is a web-app which manages content.
+Commands:
+
+    init        Generates a basic muster directory structure in your
+                current working directory, which includes:
+
+                    muster.conf  an example config file (Perl like)
+                    webapp.pl   a mojolicious web app which serves your files
+                    public      public files like a stylesheet
+
+    version     prints the Muster version you are using
+
+For more help please check out the docs: perldoc Muster
+EOD
+    # don't exit, we want the mojo help too
+}
+
+# Otherwisr start command line interface for application
+require Mojolicious::Commands;
+Mojolicious::Commands->start_app('Muster');
