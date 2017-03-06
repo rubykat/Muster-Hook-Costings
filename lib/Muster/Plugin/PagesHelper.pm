@@ -42,20 +42,6 @@ sub register {
         return $self->_serve_page($c);
     } );
 
-    $app->helper( 'muster_scan_page' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_scan_page($c,%args);
-    } );
-
-    $app->helper( 'muster_scan_all' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_scan_all($c,%args);
-    } );
-
     $app->helper( 'muster_total_pages' => sub {
         my $c        = shift;
         my %args = @_;
@@ -125,7 +111,6 @@ sub _serve_page {
     my $c = shift;
     my $app = $c->app;
 
-
     my $pagename = $c->param('pagename') // '';
 
     my $leaf = $self->{pages}->find($pagename);
@@ -149,62 +134,6 @@ sub _serve_page {
     # cache this page or not?
     $leaf->decache unless $app->config->{'cached'};
 } # _serve_page
-
-=head2 _scan_page
-
-Scan a single page.
-
-=cut
-
-sub _scan_page {
-    my $self = shift;
-    my $c = shift;
-    my $app = $c->app;
-
-    my $pagename = $c->param('pagename') // '';
-
-    my $leaf = $self->{pages}->find($pagename);
-    unless (defined $leaf)
-    {
-        warn __PACKAGE__, " _scan_page page not found for $pagename";
-        $c->reply->not_found;
-        return;
-    }
-
-    my $meta = $leaf->meta();
-    unless (defined $meta)
-    {
-        warn __PACKAGE__, " _scan_page meta not found for $pagename";
-        $c->reply->not_found;
-        return;
-    }
-    # add the meta to the metadb
-    $self->{metadb}->update_one_page(%{$meta});
-
-    $c->stash('content' => '<pre>' . Dump($meta) . '</pre>');
-    $c->render(template => 'page');
-
-    # cache this page or not?
-    $leaf->decache unless $app->config->{'cached'};
-} # _scan_page
-
-=head2 _scan_all
-
-Scan all pages.
-
-=cut
-
-sub _scan_all {
-    my $self = shift;
-    my $c = shift;
-    my $app = $c->app;
-
-    my $all_pages = $self->{pages}->all_pages();
-    $self->{metadb}->update_all_pages(%{$all_pages});
-
-    $c->stash('content' => '<pre>' . Dump($all_pages) . '</pre>');
-    $c->render(template => 'page');
-} # _scan_all
 
 =head2 _total_pages
 

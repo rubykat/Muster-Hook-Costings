@@ -33,19 +33,6 @@ sub page {
     $c->muster_serve_page();
 }
 
-sub scan {
-    my $c  = shift;
-    my $pagename = $c->param('pagename');
-    if ($pagename)
-    {
-        $c->muster_scan_page(pagename=>$pagename);
-    }
-    else
-    {
-        $c->muster_scan_all();
-    }
-}
-
 sub debug {
     my $c  = shift;
     my $pagename = $c->param('pagename');

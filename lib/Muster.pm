@@ -48,9 +48,14 @@ sub startup {
     {
         $conf_file = $ENV{MUSTER_CONFIG};
     }
-    print STDERR "CONFIG: $conf_file\n";
     my $mojo_config = $self->plugin('Config' => { file => $conf_file });
 
+    # -------------------------------------------
+    # New commands in Muster::Command namespace
+    # -------------------------------------------
+    push @{$self->commands->namespaces}, 'Muster::Command';
+
+    # -------------------------------------------
     # Append public directories
     # Find the Muster "public" directory
     # It could be relative to the CWD
@@ -72,7 +77,6 @@ sub startup {
     if (-d $pubdir)
     {
         push @{$self->static->paths}, $pubdir;
-        print STDERR "PUBLIC: $pubdir\n";
     }
  
     # -------------------------------------------
@@ -111,8 +115,6 @@ sub startup {
     $r->get('/pagelist')->to('pages#pagelist');
     $r->get('/debug')->to('pages#debug');
     $r->get('/debug/*pagename')->to('pages#debug');
-    $r->get('/scan')->to('pages#scan');
-    $r->get('/scan/*pagename')->to('pages#scan');
     # anything else should be a page
     $r->get('/*pagename')->to('pages#page');
 }

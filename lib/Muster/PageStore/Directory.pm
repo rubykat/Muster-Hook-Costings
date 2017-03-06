@@ -33,12 +33,11 @@ has parent_page => undef;
 has indexname => 'index';
 has pages_dir   => sub { croak 'no pages_dir given' };
 has filename   => sub { croak 'no filename given' };
-has name       => sub { shift->build_name };
 has pagename       => sub { shift->build_pagename };
+has name       => sub { shift->build_name };
 has dir_children    => sub { shift->build_dir_children };
 has file_children    => sub { shift->build_file_children };
-has meta        => sub { shift->build_meta };
-has html        => sub { shift->build_html };
+has leaf        => sub { shift->find_index };
 
 sub init {
     my $self = shift;
@@ -49,7 +48,6 @@ sub init {
     if (-d $pages_dir)
     {
         $self->{pages_dir} = $pages_dir;
-        print STDERR "PAGES: ", $self->{pages_dir}, "\n";
     }
     else
     {
@@ -132,29 +130,6 @@ sub build_file_children {
     return \@children;
 }
 
-sub build_meta {
-    my $self = shift;
-    my %meta = ();
-
-    # get meta information from Index node
-    if (my $index = $self->find_index())
-    {
-        $meta{$_} = $index->meta->{$_} for keys %{$index->meta};
-    }
-
-    return \%meta;
-}
-
-sub build_html {
-    my $self = shift;
-
-    # try to find index
-    my $index = $self->find_index();
-    return unless $index;
-
-    return $index->html;
-}
-
 sub find_index {
     my $self = shift;
 
@@ -189,11 +164,6 @@ sub find {
     my ($self, @names) = @_;
     my $node = $self;
 
-    if ($self->is_root)
-    {
-        my $index = $self->find_index();
-        return $index if $index;
-    }
     return $node unless @names;
 
     # find matching child node

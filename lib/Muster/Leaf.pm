@@ -94,4 +94,14 @@ sub build_title {
     return $self->name;
 }
 
+sub find {
+    my ($self, @names) = @_;
+
+    # return itself, that's the only thing it can find
+    return $self unless @names;
+
+    # not found
+    return;
+}
+
 1;
