@@ -33,6 +33,19 @@ sub page {
     $c->muster_serve_page();
 }
 
+sub scan {
+    my $c  = shift;
+    my $path = $c->param('cpath');
+    if ($path)
+    {
+        $c->muster_scan_page(path=>$path);
+    }
+    else
+    {
+        $c->muster_scan_all();
+    }
+}
+
 sub debug {
     my $c  = shift;
     my $path = $c->param('cpath');

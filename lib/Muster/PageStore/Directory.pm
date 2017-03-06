@@ -213,6 +213,33 @@ sub find {
     return $node->find(@names);
 }
 
+sub get_all_meta {
+    my $self = shift;
+
+    my $merge = Hash::Merge->new();
+    my $pages = {};
+
+    # first, this directory/index
+    my $index = $self->find_index();
+    return unless $index;
+    $pages->{$self->path} = $index->meta;
+
+    # files below this
+    for my $leaf (@{$self->file_children})
+    {
+        $pages->{$leaf->path} = $leaf->meta;
+    }
+
+    # directories below this
+    for my $dir (@{$self->dir_children})
+    {
+        my $dir_pages = $dir->get_all_meta();
+        my $new_pages = $merge->merge($pages,$dir_pages);
+        $pages = $new_pages;
+    }
+    return $pages;
+}
+
 1;
 
 __END__

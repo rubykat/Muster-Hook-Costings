@@ -50,6 +50,11 @@ sub build_title {
     return $self->name;
 }
 
+sub get_all_meta {
+    my $self = shift;
+    croak 'get_all_meta needs to be overwritten by subclass';
+}
+
 sub find {
     my ($self, $path) = @_;
 

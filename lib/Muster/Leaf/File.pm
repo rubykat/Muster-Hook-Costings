@@ -30,8 +30,6 @@ has filename   => sub { croak 'no filename given' };
 has name       => sub { shift->build_name };
 has ext        => sub { shift->build_ext };
 has path       => sub { shift->build_path };
-has content    => sub { shift->build_content_and_meta->content };
-has meta       => sub { shift->build_content_and_meta->meta };
 
 =head2 reclassify
 

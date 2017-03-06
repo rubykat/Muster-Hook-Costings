@@ -25,19 +25,44 @@ use Mojo::Base 'Muster::Leaf::File';
 use Carp;
 use Mojo::Util      'decode';
 use Text::MultiMarkdown  'markdown';
+use Hash::Merge;
 use YAML::Any;
 
 sub build_meta {
     my $self = shift;
+
+    # there is always the default information
+    # of path, filename etc.
+    my $meta = {
+        path=>$self->path,
+        path_prefix=>$self->path_prefix,
+        filename=>$self->filename,
+        ext=>$self->ext,
+        name=>$self->name,
+        title=>$self->build_title,
+    };
 
     my $extracted_yml = $self->extract_yml();
     if (defined $extracted_yml
 	and defined $extracted_yml->{yml})
     {
 	my $parsed_yml = $self->parse_yml($extracted_yml->{yml});
-        return $parsed_yml;
+        # what is in the YAML overrides the defaults
+        my $merge = Hash::Merge->new('RIGHT_PRECEDENT');
+        my $new_meta = $merge->($meta, $parsed_yml);
+        $meta = $new_meta;
     }
-    return undef;
+    return $meta;
+}
+
+sub build_title {
+    my $self = shift;
+
+    # try to extract title
+    return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
+    my $name = $self->name;
+    $name =~ s/_/ /g;
+    return $name;
 }
 
 sub build_html {

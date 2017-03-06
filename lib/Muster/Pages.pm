@@ -24,6 +24,7 @@ use Path::Tiny;
 use YAML::Any;
 use POSIX qw(ceil);
 use Mojo::URL;
+use Hash::Merge;
 use Muster::Leaf;
 use Muster::Leaf::File;
 use Muster::PageStore;
@@ -95,6 +96,32 @@ sub find {
 
     return $node;
 } # find
+
+=head2 all_pages
+
+Get all the known pages; page + meta.
+Return a hash where the keys are the pagenames/paths
+
+=cut
+
+sub all_pages {
+    my $self = shift;
+    my $path = shift;
+
+    my $all_pages = {};
+    my $merge = Hash::Merge->new('LEFT_PRECEDENT');
+    # Go through all the sources
+    # Earlier sources take precedence
+    for (my $i = 0; $i < scalar @{$self->{_sources}}; $i++)
+    {
+        my $top_node = $self->{_sources}[$i];
+        my $pages = $top_node->get_all_meta();
+        my $new_pages = $merge->merge($all_pages, $pages);
+        $all_pages = $new_pages;
+    }
+
+    return $all_pages;
+} # all_pages
 
 =head2 pagelist
 

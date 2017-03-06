@@ -16,7 +16,8 @@ keeping meta-data about pages.
 
 =cut
 
-use common::sense;
+use Mojo::Base -base;
+use Carp;
 use DBI;
 use Path::Tiny;
 use Search::Query;
@@ -28,42 +29,71 @@ use Mojo::URL;
 
 =head1 METHODS
 
-=head2 new
+=head2 init
 
-Create a new object, setting global values for the object.
-
-    my $obj = Muster::MetaDb->new(
-        metadb_db=>$database);
+Set the defaults for the object if they are not defined already.
 
 =cut
-
-sub new {
-    my $class = shift;
-    my %parameters = (@_);
-    my $self = bless ({%parameters}, ref ($class) || $class);
-
-    $self->_set_defaults();
-
-    return ($self);
-} # new
-
-=head2 scan_page
-
-Scan one page and add its data to the database
-
-=cut
-
-sub scan_page {
+sub init {
     my $self = shift;
-    my $page = shift;
+
+    $self->{metadb_table} = 'pagefields' if !defined $self->{metadb_table};
+
+    if (!defined $self->{metadb_fields})
+    {
+        # set default fields
+        $self->{metadb_fields} = [qw(title pagetitle baseurl parent_page basename description)];
+    }
+    if (!defined $self->{metadb_db})
+    {
+        # give a default name
+        $self->{metadb_db} = 'muster.sqlite';
+    }
+    $self->{default_limit} = 100 if !defined $self->{default_limit};
+
+    return $self;
+
+} # init
+
+=head2 update_one_page
+
+Update the meta information for one page
+
+=cut
+
+sub update_one_page {
+    my $self = shift;
+    my %args = @_;
 
     if (!$self->_connect())
     {
         return undef;
     }
 
-    return $self->_scan_page($page);
-} # scan_page
+    $self->_add_meta_to_db(%args);
+
+    $self->_commit();
+
+} # update_one_page
+
+=head2 update_all_pages
+
+Update the meta information for all pages.
+
+=cut
+
+sub update_all_pages {
+    my $self = shift;
+    my %args = @_;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    $self->_update_all_entries(%args);
+
+} # update_all_pages
 
 =head2 pagelist
 
@@ -80,7 +110,7 @@ sub pagelist {
         return undef;
     }
 
-    return $self->_process_pagelist(%args);
+    return $self->_get_all_pagenames(%args);
 } # pagelist
 
 =head2 total_pages
@@ -119,40 +149,6 @@ sub what_error {
 These are functions which are NOT exported by this plugin.
 
 =cut
-
-=head2 _set_defaults
-
-Set the defaults for the object if they are not defined already.
-
-=cut
-sub _set_defaults {
-    my $self = shift;
-    my $conf = shift;
-
-    foreach my $key (keys %{$conf})
-    {
-        if (defined $conf->{$key})
-        {
-            $self->{$key} = $conf->{$key};
-        }
-    }
-
-    $self->{metadb_table} = 'pagefields' if !defined $self->{metadb_table};
-
-    if (!defined $self->{metadb_fields})
-    {
-        # set default fields
-        $self->{metadb_fields} = [qw(title pagetitle baseurl parent_page basename description)];
-    }
-    if (!defined $self->{metadb_db})
-    {
-        die "No database given";
-    }
-    $self->{default_limit} = 100 if !defined $self->{default_limit};
-
-    return $self;
-
-} # _set_defaults
 
 =head2 _connect
 
@@ -221,29 +217,22 @@ sub _connect {
     return 1;
 } # _connect
 
-=head2 _scan_page
-
-Scan one page and add its data to the database
-
-=cut
-
-sub _scan_page {
-    my $self = shift;
-    my $page = shift;
-
-} # _scan_page
-
 =head2 _add_meta_to_db
 
 Add a page's metadata to the database.
 
-    $self->_add_meta_to_db($node);
+    $self->_add_meta_to_db(meta=>$meta);
 
 =cut
-sub _add_meta_to_db ($$) {
+sub _add_meta_to_db ($%) {
     my $self = shift;
-    my $node = shift;
+    my %args = @_;
+    my $meta = $args{meta};
 
+    if (!$self->_connect())
+    {
+        return undef;
+    }
     my $dbh = $self->{dbh};
     if (!$self->{_transaction_on})
     {
@@ -256,7 +245,7 @@ sub _add_meta_to_db ($$) {
 	$self->{_transaction_on} = 1;
         $self->{_num_trans} = 0;
     }
-    $self->_add_fields($node);
+    $self->_add_fields(%{$meta});
     # do the commits in bursts
     $self->{_num_trans}++;
     if ($self->{_transaction_on} and $self->{_num_trans} > 100)
@@ -271,6 +260,68 @@ sub _add_meta_to_db ($$) {
         $self->{_num_trans} = 0;
     }
 } # _add_meta_to_db
+
+=head2 _update_all_entries
+
+Update all pages, adding new ones and deleting non-existent ones.
+
+    $self->_update_all_entries($page=>{...},$page2=>{}...);
+
+=cut
+sub _update_all_entries {
+    my $self = shift;
+    my %pages = @_;
+
+    my $dbh = $self->{dbh};
+
+    # delete obsolete pages
+    my @old_pages = $self->_get_all_pagenames();
+    foreach my $old_pn (@old_pages)
+    {
+        if (!exists $pages{$old_pn})
+        {
+            $self->_delete_page_from_db($old_pn);
+        }
+    }
+
+    # update/add pages
+    foreach my $pn (sort keys %pages)
+    {
+        $self->_add_meta_to_db($pages{$pn});
+    }
+    $self->_commit();
+
+} # _update_all_entries
+
+=head2 _commit
+
+Commit a pending transaction.
+
+    $self->_commit();
+
+=cut
+sub _commit ($%) {
+    my $self = shift;
+    my %args = @_;
+    my $meta = $args{meta};
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+    my $dbh = $self->{dbh};
+    if ($self->{_transaction_on})
+    {
+	my $ret = $dbh->do("COMMIT;");
+	if (!$ret)
+	{
+	    $self->{error} = "metadb failed COMMIT : $DBI::errstr";
+            return 0;
+	}
+	$self->{_transaction_on} = 0;
+        $self->{_num_trans} = 0;
+    }
+} # _commit
 
 =head2 _search
 
@@ -348,21 +399,43 @@ sub _search {
         sql=>$q};
 } # _search
 
-=head2 _process_pagelist
+=head2 _get_all_pagenames
 
-Process the request, return HTML of all the tags.
+List of all pagenames
 
-$dbtable->_process_pagelist(%args);
+$dbtable->_get_all_pagenames(%args);
 
 =cut
 
-sub _process_pagelist {
+sub _get_all_pagenames {
     my $self = shift;
     my %args = @_;
 
     my $dbh = $self->{dbh};
+    my $table = $self->{metadb_table};
+    my $q = "SELECT page FROM $table ORDER BY page;";
 
-} # _process_pagelist
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    my @pagenames = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @pagenames, $row[0];
+    }
+
+    return @pagenames;
+} # _get_all_pagenames
 
 =head2 _page_exists
 
@@ -694,20 +767,21 @@ sub _query_to_sql {
 
 Add metadata to db.
 
-    $self->_add_fields($node);
+    $self->_add_fields(%meta);
 
 =cut
 sub _add_fields {
     my $self = shift;
-    my $node = shift;
-    my $pagename = $node->path();
+    my %meta = @_;
+    my $pagename = $meta{path};
 
+    my $dbh = $self->{dbh};
     my $table = $self->{metadb_table};
 
     my @values = ();
     foreach my $fn (@{$self->{metadb_fields}})
     {
-	my $val = $node->meta($fn);
+	my $val = $meta{$fn};
 	if (!defined $val)
 	{
 	    push @values, "NULL";
@@ -765,6 +839,23 @@ sub _add_fields {
     }
     return 1;
 } # _add_fields
+
+sub _delete_page_from_db {
+    my $self = shift;
+    my $page = shift;
+
+    my $dbh = $self->{dbh};
+    my $table = $self->{metadb_table};
+
+    my $q = "DELETE FROM $table WHERE page = ?;";
+    my $sth = $dbh->prepare($q);
+    my $ret = $sth->execute($page);
+    if (!$ret)
+    {
+        die "FAILED query '$q' $DBI::errstr";
+    }
+
+} # _delete_page_from_db
 
 1; # End of Muster::MetaDb
 __END__
