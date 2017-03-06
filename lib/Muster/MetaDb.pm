@@ -19,7 +19,6 @@ keeping meta-data about pages.
 use Mojo::Base -base;
 use Carp;
 use DBI;
-use Path::Tiny;
 use Search::Query;
 use Sort::Naturally;
 use Text::NeatTemplate;
@@ -42,7 +41,7 @@ sub init {
     if (!defined $self->{metadb_fields})
     {
         # set default fields
-        $self->{metadb_fields} = [qw(title pagetitle baseurl parent_page basename description)];
+        $self->{metadb_fields} = [qw(title name pagetype filename parent_page description)];
     }
     if (!defined $self->{metadb_db})
     {
@@ -58,6 +57,8 @@ sub init {
 =head2 update_one_page
 
 Update the meta information for one page
+
+    $self->update_one_page(%meta);
 
 =cut
 
@@ -221,13 +222,12 @@ sub _connect {
 
 Add a page's metadata to the database.
 
-    $self->_add_meta_to_db(meta=>$meta);
+    $self->_add_meta_to_db(%meta);
 
 =cut
-sub _add_meta_to_db ($%) {
+sub _add_meta_to_db {
     my $self = shift;
-    my %args = @_;
-    my $meta = $args{meta};
+    my %meta = @_;
 
     if (!$self->_connect())
     {
@@ -245,7 +245,7 @@ sub _add_meta_to_db ($%) {
 	$self->{_transaction_on} = 1;
         $self->{_num_trans} = 0;
     }
-    $self->_add_fields(%{$meta});
+    $self->_add_fields(%meta);
     # do the commits in bursts
     $self->{_num_trans}++;
     if ($self->{_transaction_on} and $self->{_num_trans} > 100)
@@ -287,7 +287,7 @@ sub _update_all_entries {
     # update/add pages
     foreach my $pn (sort keys %pages)
     {
-        $self->_add_meta_to_db($pages{$pn});
+        $self->_add_meta_to_db(%{$pages{$pn}});
     }
     $self->_commit();
 
@@ -773,7 +773,7 @@ Add metadata to db.
 sub _add_fields {
     my $self = shift;
     my %meta = @_;
-    my $pagename = $meta{path};
+    my $pagename = $meta{pagename};
 
     my $dbh = $self->{dbh};
     my $table = $self->{metadb_table};

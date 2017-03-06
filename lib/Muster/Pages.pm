@@ -20,7 +20,6 @@ All pages here are file-based.
 use Mojo::Base -base;
 use Carp;
 
-use Path::Tiny;
 use YAML::Any;
 use POSIX qw(ceil);
 use Mojo::URL;
@@ -43,11 +42,11 @@ sub init {
     my $self = shift;
 
     $self->{_sources} = [];
-    foreach my $psp (@{$self->{page_sources}})
+    foreach my $psp (@{$self->page_sources()})
     {
         my $type = $psp->{type};
         my $obj = $type->new(
-            path_prefix=>'',
+            parent_page=>'',
             filename=>'',
             is_root=>1,
             %{$psp},
@@ -79,10 +78,10 @@ Find a page.
 
 sub find {
     my $self = shift;
-    my $path = shift;
+    my $pagename = shift;
 
-    # split path and find content node
-    my @names = split m|/| => $path;
+    # split pagename and find content node
+    my @names = split m|/| => $pagename;
 
     my $node = undef;
     my $i = 0;
@@ -100,13 +99,12 @@ sub find {
 =head2 all_pages
 
 Get all the known pages; page + meta.
-Return a hash where the keys are the pagenames/paths
+Return a hash where the keys are the pagenames
 
 =cut
 
 sub all_pages {
     my $self = shift;
-    my $path = shift;
 
     my $all_pages = {};
     my $merge = Hash::Merge->new('LEFT_PRECEDENT');

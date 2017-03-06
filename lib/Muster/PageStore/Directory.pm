@@ -9,9 +9,8 @@ Muster::PageStore::Directory - storing pages in a directory
 
     use Muster::PageStore::Directory;
     my $dir = Muster::PageStore::Directory->new(
-        filename => 'foo'
+        pages_dir => 'foo'
     );
-    my $first_child = $dir->dir_children->[0];
 
 =head1 DESCRIPTION
 
@@ -30,10 +29,12 @@ use YAML::Any;
 
 has is_root     => undef;
 has parent_node => undef;
+has parent_page => undef;
+has indexname => 'index';
 has pages_dir   => sub { croak 'no pages_dir given' };
 has filename   => sub { croak 'no filename given' };
 has name       => sub { shift->build_name };
-has path       => sub { shift->build_path };
+has pagename       => sub { shift->build_pagename };
 has dir_children    => sub { shift->build_dir_children };
 has file_children    => sub { shift->build_file_children };
 has meta        => sub { shift->build_meta };
@@ -59,8 +60,8 @@ sub init {
 sub build_name {
     my $self = shift;
 
-    # root node
-    return '' if $self->is_root;
+    # root node -- call it the indexname, rather than being blank
+    return $self->indexname if $self->is_root;
 
     # get last filename part
     my $base = basename($self->filename);
@@ -68,14 +69,14 @@ sub build_name {
     return $base;
 }
 
-sub build_path {
+sub build_pagename {
     my $self = shift;
 
-    # root node
-    return '' if $self->is_root;
+    # root node -- call it the indexname, rather than being blank
+    return $self->indexname if $self->is_root;
 
-    # build from path_prefix, infix slash and name
-    return join '/' => grep {$_ ne ''} $self->path_prefix, $self->name;
+    # build from parent_page, infix slash and name
+    return join '/' => grep {$_ ne ''} $self->parent_page, $self->name;
 }
 
 sub build_dir_children {
@@ -92,7 +93,7 @@ sub build_dir_children {
         {
             my $node = Muster::PageStore::Directory->new(
                 filename    => $entry,
-                path_prefix => $self->path,
+                parent_page => ($self->is_root ? '' : $self->pagename),
                 parent_node => $self,
             );
             push @children, $node;
@@ -118,7 +119,7 @@ sub build_file_children {
         {
             my $node = Muster::Leaf::File->new(
                 filename    => $entry,
-                path_prefix => $self->path,
+                parent_page => ($self->is_root ? '' : $self->pagename),
                 parent_node => $self,
             );
             $node = $node->reclassify();
@@ -135,7 +136,7 @@ sub build_meta {
     my $self = shift;
     my %meta = ();
 
-    # get meta information from 'index' node
+    # get meta information from Index node
     if (my $index = $self->find_index())
     {
         $meta{$_} = $index->meta->{$_} for keys %{$index->meta};
@@ -160,7 +161,7 @@ sub find_index {
     # The index file for a directory is either
     # * the "index" page below this directory
     # * the ${name}.mdwn page on the same level as this directory (if this is not root)
-    my $index = $self->find_file_child('index');
+    my $index = $self->find_file_child($self->indexname);
     if (!$index and !$self->is_root)
     {
         my $name = $self->name;
@@ -188,7 +189,11 @@ sub find {
     my ($self, @names) = @_;
     my $node = $self;
 
-    # done
+    if ($self->is_root)
+    {
+        my $index = $self->find_index();
+        return $index if $index;
+    }
     return $node unless @names;
 
     # find matching child node
@@ -222,12 +227,12 @@ sub get_all_meta {
     # first, this directory/index
     my $index = $self->find_index();
     return unless $index;
-    $pages->{$self->path} = $index->meta;
+    $pages->{$self->pagename} = $index->meta;
 
     # files below this
     for my $leaf (@{$self->file_children})
     {
-        $pages->{$leaf->path} = $leaf->meta;
+        $pages->{$leaf->pagename} = $leaf->meta;
     }
 
     # directories below this

@@ -28,24 +28,24 @@ use YAML::Any;
 
 has filename   => sub { croak 'no filename given' };
 has name       => sub { shift->build_name };
-has ext        => sub { shift->build_ext };
-has path       => sub { shift->build_path };
+has pagetype   => sub { shift->build_pagetype };
+has pagename   => sub { shift->build_pagename };
 
 =head2 reclassify
 
 Reclassify this object as a Muster::Leaf::File subtype.
 If a subtype exists, cast to that subtype and return the object;
 if not, return undef.
-To simplify things, subtypes are determined by the file extension,
-and the object name will be Muster::Leaf::File::$ext
+To simplify things, pagetypes are determined by the file extension,
+and the object name will be Muster::Leaf::File::$pagetype
 
 =cut
 
 sub reclassify {
     my $self = shift;
 
-    my $ext = $self->ext;
-    my $subtype = __PACKAGE__ . "::" . $ext;
+    my $pagetype = $self->pagetype;
+    my $subtype = __PACKAGE__ . "::" . $pagetype;
     my $has_subtype = eval "require $subtype;"; # needs to be quoted because $subtype is a variable
     if ($has_subtype)
     {
@@ -67,14 +67,14 @@ sub build_name {
     return $base;
 }
 
-sub build_path {
+sub build_pagename {
     my $self = shift;
 
-    # build from path_prefix, infix slash and name
-    return join '/' => grep {$_ ne ''} $self->path_prefix, $self->name;
+    # build from parent_page, infix slash and name
+    return join '/' => grep {$_ ne ''} $self->parent_page, $self->name;
 }
 
-sub build_ext {
+sub build_pagetype {
     my $self = shift;
 
     my $ext = '';

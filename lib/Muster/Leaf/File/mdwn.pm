@@ -27,19 +27,20 @@ use Mojo::Util      'decode';
 use Text::MultiMarkdown  'markdown';
 use Hash::Merge;
 use YAML::Any;
+use Lingua::EN::Titlecase;
 
 sub build_meta {
     my $self = shift;
 
     # there is always the default information
-    # of path, filename etc.
+    # of pagename, filename etc.
     my $meta = {
-        path=>$self->path,
-        path_prefix=>$self->path_prefix,
+        pagename=>$self->pagename,
+        parent_page=>$self->parent_page,
         filename=>$self->filename,
-        ext=>$self->ext,
+        pagetype=>$self->pagetype,
         name=>$self->name,
-        title=>$self->build_title,
+        title=>$self->derive_title,
     };
 
     my $extracted_yml = $self->extract_yml();
@@ -55,14 +56,15 @@ sub build_meta {
     return $meta;
 }
 
-sub build_title {
+sub derive_title {
     my $self = shift;
 
     # try to extract title
     return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
     my $name = $self->name;
     $name =~ s/_/ /g;
-    return $name;
+    my $tc = Lingua::EN::Titlecase->new($name);
+    return $tc->title();
 }
 
 sub build_html {

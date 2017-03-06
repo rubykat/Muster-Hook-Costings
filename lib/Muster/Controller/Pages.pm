@@ -35,10 +35,10 @@ sub page {
 
 sub scan {
     my $c  = shift;
-    my $path = $c->param('cpath');
-    if ($path)
+    my $pagename = $c->param('pagename');
+    if ($pagename)
     {
-        $c->muster_scan_page(path=>$path);
+        $c->muster_scan_page(pagename=>$pagename);
     }
     else
     {
@@ -48,8 +48,8 @@ sub scan {
 
 sub debug {
     my $c  = shift;
-    my $path = $c->param('cpath');
-    $c->reply->exception("Debug" . (defined $path ? " $path" : ''));
+    my $pagename = $c->param('pagename');
+    $c->reply->exception("Debug" . (defined $pagename ? " $pagename" : ''));
 }
 
 1;

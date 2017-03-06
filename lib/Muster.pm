@@ -110,11 +110,11 @@ sub startup {
     $r->get('/opt')->to('pages#options');
     $r->get('/pagelist')->to('pages#pagelist');
     $r->get('/debug')->to('pages#debug');
-    $r->get('/debug/*cpath')->to('pages#debug');
+    $r->get('/debug/*pagename')->to('pages#debug');
     $r->get('/scan')->to('pages#scan');
-    $r->get('/scan/*cpath')->to('pages#scan');
+    $r->get('/scan/*pagename')->to('pages#scan');
     # anything else should be a page
-    $r->get('/*cpath')->to('pages#page');
+    $r->get('/*pagename')->to('pages#page');
 }
 
 1; # end of Muster

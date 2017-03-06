@@ -18,13 +18,12 @@ use Mojo::Base -base;
 
 use Carp;
 
-has path        => '';
-has path_prefix => '';
+has pagename    => '';
+has parent_page => '';
 has name        => sub { shift->build_name };
 has meta        => sub { {} };
 has html        => sub { shift->build_html };
 has raw         => sub { shift->build_raw };
-has title       => sub { shift->build_title };
 
 sub build_name {
     my $self = shift;
@@ -41,25 +40,16 @@ sub build_raw {
     croak 'build_raw needs to be overwritten by subclass';
 }
 
-sub build_title {
-    my $self = shift;
-
-    # try to extract title
-    return $self->meta->{title} if exists $self->meta->{title};
-    return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
-    return $self->name;
-}
-
 sub get_all_meta {
     my $self = shift;
     croak 'get_all_meta needs to be overwritten by subclass';
 }
 
 sub find {
-    my ($self, $path) = @_;
+    my ($self, @names) = @_;
 
     # no search
-    return $self unless $path;
+    return $self unless @names;
 
     # not found
     return;

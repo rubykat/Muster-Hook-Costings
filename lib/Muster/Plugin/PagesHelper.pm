@@ -21,7 +21,6 @@ use Muster::Leaf;
 use Muster::MetaDb;
 use common::sense;
 use DBI;
-use Path::Tiny;
 use Text::NeatTemplate;
 use YAML::Any;
 use POSIX qw(ceil);
@@ -127,9 +126,9 @@ sub _serve_page {
     my $app = $c->app;
 
 
-    my $path = $c->param('cpath') // '';
+    my $pagename = $c->param('pagename') // '';
 
-    my $leaf = $self->{pages}->find($path);
+    my $leaf = $self->{pages}->find($pagename);
     unless (defined $leaf)
     {
         $c->reply->not_found;
@@ -143,7 +142,7 @@ sub _serve_page {
         return;
     }
 
-    $c->stash('path' => $path);
+    $c->stash('pagename' => $pagename);
     $c->stash('content' => $html);
     $c->render(template => 'page');
 
@@ -162,12 +161,12 @@ sub _scan_page {
     my $c = shift;
     my $app = $c->app;
 
-    my $path = $c->param('cpath') // '';
+    my $pagename = $c->param('pagename') // '';
 
-    my $leaf = $self->{pages}->find($path);
+    my $leaf = $self->{pages}->find($pagename);
     unless (defined $leaf)
     {
-        warn __PACKAGE__, " _scan_page page not found for $path";
+        warn __PACKAGE__, " _scan_page page not found for $pagename";
         $c->reply->not_found;
         return;
     }
@@ -175,13 +174,12 @@ sub _scan_page {
     my $meta = $leaf->meta();
     unless (defined $meta)
     {
-        warn __PACKAGE__, " _scan_page meta not found for $path";
+        warn __PACKAGE__, " _scan_page meta not found for $pagename";
         $c->reply->not_found;
         return;
     }
     # add the meta to the metadb
-    $meta->{path} = $path;
-    $self->{metadb}->update_one_page(meta=>$meta);
+    $self->{metadb}->update_one_page(%{$meta});
 
     $c->stash('content' => '<pre>' . Dump($meta) . '</pre>');
     $c->render(template => 'page');
@@ -238,10 +236,10 @@ sub _make_page_related_list {
     my $self  = shift;
     my $c  = shift;
 
-    my $cpath = $c->param('cpath');
+    my $pagename = $c->param('pagename');
     my @out = ();
     push @out, "<div class='pagelist'><ul>";
-    push @out, "<li>$cpath</li>";
+    push @out, "<li>$pagename</li>";
     push @out, "</ul></div>";
     my $out = join("\n", @out);
     return $out;
@@ -257,12 +255,12 @@ sub _pagelist {
     my $self  = shift;
     my $c  = shift;
 
-    my $cpath = $c->param('cpath') // '';
+    my $pagename = $c->param('pagename') // '';
     my $opt_url = $c->url_for("/opt");
-    my $location = $c->url_for("/pages/$cpath");
+    my $location = $c->url_for($pagename);
     my $res = $self->{pages}->pagelist(location=>$location,
         opt_url=>$opt_url,
-        cpath=>$cpath,
+        pagename=>$pagename,
         n=>0,
     );
     if (!defined $res)

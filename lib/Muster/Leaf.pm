@@ -19,8 +19,8 @@ use Mojo::Base -base;
 use Carp;
 
 has parent_node => undef;
-has path        => '';
-has path_prefix => '';
+has pagename    => '';
+has parent_page => '';
 has name        => sub { shift->build_name };
 has title       => sub { shift->build_title };
 
@@ -92,16 +92,6 @@ sub build_title {
     return $self->meta->{title} if exists $self->{meta} and exists $self->meta->{title};
     return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
     return $self->name;
-}
-
-sub find {
-    my ($self, $path) = @_;
-
-    # no search
-    return $self unless $path;
-
-    # not found
-    return;
 }
 
 1;
