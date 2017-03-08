@@ -14,13 +14,9 @@ keeping meta-data about pages.
 
 use Mojo::Base -base;
 use Carp;
-use DBI;
-use Search::Query;
-use Sort::Naturally;
-use Text::NeatTemplate;
+use Muster::MetaDb;
+use Muster::Pages;
 use YAML::Any;
-use POSIX qw(ceil);
-use Mojo::URL;
 
 has command => sub { croak "command is not defined" };
 

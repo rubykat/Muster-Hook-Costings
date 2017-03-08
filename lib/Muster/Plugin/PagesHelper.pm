@@ -16,8 +16,8 @@ Content management system; finding and showing pages.
 =cut
 
 use Mojo::Base 'Mojolicious::Plugin';
-use Muster::Pages;
 use Muster::Leaf;
+use Muster::Leaf::File;
 use Muster::MetaDb;
 use common::sense;
 use DBI;
@@ -94,8 +94,6 @@ sub _init {
     my $app = shift;
     my $conf = shift;
 
-    $self->{pages} = Muster::Pages->new(page_sources => $app->config->{page_sources});
-    $self->{pages}->init();
     $self->{metadb} = Muster::MetaDb->new(%{$app->config});
     $self->{metadb}->init();
     return $self;

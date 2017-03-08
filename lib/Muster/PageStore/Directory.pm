@@ -50,7 +50,7 @@ sub init {
     }
     else
     {
-        croak "Pages dir '$pages_dir' not found!";
+        croak "pages dir '$pages_dir' not found!";
     }
 }
 
