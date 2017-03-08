@@ -33,4 +33,9 @@ sub debug {
     $c->reply->exception("Debug" . (defined $pagename ? " $pagename" : ''));
 }
 
+sub meta {
+    my $c  = shift;
+    $c->muster_serve_meta();
+}
+
 1;

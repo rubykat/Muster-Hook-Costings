@@ -43,6 +43,13 @@ sub register {
         return $self->_serve_page($c);
     } );
 
+    $app->helper( 'muster_serve_meta' => sub {
+        my $c        = shift;
+        my %args = @_;
+
+        return $self->_serve_meta($c);
+    } );
+
     $app->helper( 'muster_total_pages' => sub {
         my $c        = shift;
         my %args = @_;
@@ -178,6 +185,34 @@ sub _serve_file {
     # now display the logo
     $c->render(data => $bytes, format => $ext);
 } # _serve_file
+
+=head2 _serve_meta
+
+Serve a single page's meta-data.
+
+=cut
+
+sub _serve_meta {
+    my $self = shift;
+    my $c = shift;
+    my $app = $c->app;
+
+    my $pagename = $c->param('pagename') // 'index';
+
+    my $info = $self->{metadb}->page_info($pagename);
+    unless (defined $info)
+    {
+        $c->reply->not_found;
+        return;
+    }
+
+    my $html = "<pre>\n" . Dump($info) . "\n</pre>\n";
+
+    $c->stash('pagename' => $pagename);
+    $c->stash('content' => $html);
+    $c->render(template => 'page');
+
+} # _serve_meta
 
 =head2 _total_pages
 

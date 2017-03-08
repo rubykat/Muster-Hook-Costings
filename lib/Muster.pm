@@ -114,6 +114,7 @@ sub startup {
     $r->get('/pagelist')->to('pages#pagelist');
     $r->get('/debug')->to('pages#debug');
     $r->get('/debug/*pagename')->to('pages#debug');
+    $r->get('/meta/*pagename')->to('pages#meta');
     # anything else should be a page
     $r->get('/*pagename')->to('pages#page');
 }

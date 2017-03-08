@@ -27,8 +27,20 @@ use Mojo::Util      'decode';
 use Text::MultiMarkdown  'markdown';
 use Encode qw{encode};
 use Hash::Merge;
-use YAML::Any;
+# use a fast YAML
+use YAML::XS;
 use Lingua::EN::Titlecase;
+
+sub derive_title {
+    my $self = shift;
+
+    # try to extract title
+    #return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
+    my $name = $self->name;
+    $name =~ s/_/ /g;
+    my $tc = Lingua::EN::Titlecase->new($name);
+    return $tc->title();
+}
 
 sub build_meta {
     my $self = shift;
@@ -45,120 +57,146 @@ sub build_meta {
         title=>$self->derive_title,
     };
 
-    my $extracted_yml = $self->extract_yml();
-    if (defined $extracted_yml
-	and defined $extracted_yml->{yml})
+    # if there's no YAML in the file then there's no further meta-data
+    if (!$self->has_yaml())
     {
-	my $parsed_yml = $self->parse_yml($extracted_yml->{yml});
-        # what is in the YAML overrides the defaults
-        my $merge = Hash::Merge->new('RIGHT_PRECEDENT');
-        my $new_meta = $merge->merge($meta, $parsed_yml);
-        $meta = $new_meta;
+        return $meta;
     }
+
+    # We can't just use YAML streams straight, because the second part is
+    # generally not YAML-compatible.
+    my $yaml_str = $self->get_yaml_part();
+    my $ydata;
+    eval {$ydata = Load(encode('UTF-8', $yaml_str));};
+    if ($@)
+    {
+        warn __PACKAGE__, " Load of data failed: $@";
+        return $meta;
+    }
+    if (!$ydata)
+    {
+        warn __PACKAGE__, " no legal YAML";
+        return $meta;
+    }
+
+    # what is in the YAML overrides the defaults
+    my $merge = Hash::Merge->new('RIGHT_PRECEDENT');
+    my $new_meta = $merge->merge($meta, $ydata);
+    $meta = $new_meta;
+
     return $meta;
 }
 
-sub derive_title {
+# the file has YAML if the FIRST line is '---'
+sub has_yaml {
     my $self = shift;
 
-    # try to extract title
-    return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
-    my $name = $self->name;
-    $name =~ s/_/ /g;
-    my $tc = Lingua::EN::Titlecase->new($name);
-    return $tc->title();
+    my $fh;
+    if (!open($fh, '<', $self->filename))
+    {
+        croak __PACKAGE__, " Unable to open file '" . $self->filename ."': $!\n";
+    }
+
+    my $first_line = <$fh>;
+    close($fh);
+    return 0 if !$first_line;
+
+    chomp $first_line;
+    return ($first_line eq '---');
+}
+
+sub build_raw {
+    my $self = shift;
+
+    return $self->get_content_part();
+}
+
+# Get the YAML part of a file (if any)
+# by reading the stuff between the first set of --- lines
+# Don't load the whole file!
+# When we want the YAML, we are scanning, and we don't want the content.
+sub get_yaml_part {
+    my $self = shift;
+
+    my $fh;
+    if (!open($fh, '<', $self->filename))
+    {
+        croak __PACKAGE__, " Unable to open file '" . $self->filename ."': $!\n";
+    }
+
+    my $yaml_str = '';
+    my $yaml_started = 0;
+    while (<$fh>) {
+        if (/^---$/) {
+            if (!$yaml_started)
+            {
+                $yaml_started = 1;
+                next;
+            }
+            else # end of the yaml part
+            {
+                last;
+            }
+        }
+        if ($yaml_started)
+        {
+            $yaml_str .= $_;
+        }
+    }
+    close($fh);
+    warn __PACKAGE__, " get_yaml_part YAML is $yaml_str\n";
+    return $yaml_str;
+}
+
+sub get_content_part {
+    my $self = shift;
+
+    my $fh;
+    if (!$self->has_yaml())
+    {
+        # read the whole file
+        my $fn = $self->filename;
+        open $fh, '<:encoding(UTF-8)', $fn or croak "couldn't open $fn: $!";
+
+        # slurp
+        return do { local $/; <$fh> };
+    }
+
+    if (!open($fh, '<', $self->filename))
+    {
+        croak __PACKAGE__, " Unable to open file '" . $self->filename ."': $!\n";
+    }
+
+    my $content = '';
+    my $yaml_started = 0;
+    my $content_started = 0;
+    while (<$fh>) {
+        if (/^---$/) {
+            if (!$yaml_started)
+            {
+                $yaml_started = 1;
+            }
+            else # end of the yaml part
+            {
+                $content_started = 1;
+            }
+            next;
+        }
+        if ($content_started)
+        {
+            $content .= $_;
+        }
+    }
+    close($fh);
+    return $content;
 }
 
 sub build_html {
     my $self = shift;
 
-    my $extracted_yml = $self->extract_yml();
-    if (defined $extracted_yml
-	and defined $extracted_yml->{content})
-    {
-        return markdown($extracted_yml->{content});
-    }
-    return undef;
+    my $content = $self->get_content_part();
+    return markdown($content);
 }
-
-# extract the YAML data from the given content
-# Expects page, content
-# Returns { yml=>$yml_str, content=>$content } or undef
-# if undef is returned, there is no YAML
-# but if $yml_str is undef then there was YAML but it was not legal
-sub extract_yml {
-    my $self = shift;
-    my $content = $self->raw();
-
-    my $start_of_content = '';
-    my $yml_str = '';
-    my $rest_of_content = '';
-    if ($content)
-    {
-        if ($content =~ /^---[\n\r](.*?[\n\r])---[\n\r](.*)$/s)
-        {
-            $yml_str = $1;
-            $rest_of_content = $2;
-        }
-    }
-    if ($yml_str) # possible YAML
-    {
-	my $ydata;
-	eval {$ydata = Load(encode('UTF-8', $yml_str));};
-	if ($@)
-	{
-	    warn __PACKAGE__, " Load of data failed: $@";
-	    return { yml=>undef, content=>$content };
-	}
-	if (!$ydata)
-	{
-	    warn __PACKAGE__, " no legal YAML";
-	    return { yml=>undef, content=>$content };
-	}
-	return { yml=>$yml_str,
-	    content=>$start_of_content . $rest_of_content};
-    }
-    return { yml=>undef, content=>$content };
-} # extract_yml
-
-# parse the YAML data from the given string
-# Expects data
-# Returns \%yml_data or undef
-sub parse_yml {
-    my $self = shift;
-    my $yml_str = shift;
-
-    if ($yml_str)
-    {
-	my $ydata;
-	eval {$ydata = Load(encode('UTF-8', $yml_str));};
-	if ($@)
-	{
-	    warn __PACKAGE__, " Load of data failed: $@";
-	    return undef;
-	}
-	if (!$ydata)
-	{
-	    warn __PACKAGE__, " no legal YAML";
-	    return undef;
-	}
-	if ($ydata)
-	{
-	    my %lc_data = ();
-
-	    # make lower-cased versions of the data
-	    foreach my $fn (keys %{$ydata})
-	    {
-		my $fval = $ydata->{$fn};
-		my $lc_fn = $fn;
-		$lc_fn =~ tr/A-Z/a-z/;
-		$lc_data{$lc_fn} = $fval;
-	    }
-	    return \%lc_data;
-	}
-    }
-    return undef;
-} # parse_yml
 
 1;
 
