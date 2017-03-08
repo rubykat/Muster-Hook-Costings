@@ -25,6 +25,7 @@ use Mojo::Base 'Muster::Leaf::File';
 use Carp;
 use Mojo::Util      'decode';
 use Text::MultiMarkdown  'markdown';
+use Encode qw{encode};
 use Hash::Merge;
 use YAML::Any;
 use Lingua::EN::Titlecase;
@@ -39,6 +40,7 @@ sub build_meta {
         parent_page=>$self->parent_page,
         filename=>$self->filename,
         pagetype=>$self->pagetype,
+        ext=>$self->ext,
         name=>$self->name,
         title=>$self->derive_title,
     };
@@ -50,7 +52,7 @@ sub build_meta {
 	my $parsed_yml = $self->parse_yml($extracted_yml->{yml});
         # what is in the YAML overrides the defaults
         my $merge = Hash::Merge->new('RIGHT_PRECEDENT');
-        my $new_meta = $merge->($meta, $parsed_yml);
+        my $new_meta = $merge->merge($meta, $parsed_yml);
         $meta = $new_meta;
     }
     return $meta;

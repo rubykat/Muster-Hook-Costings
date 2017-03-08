@@ -36,13 +36,7 @@ Set the defaults for the object if they are not defined already.
 sub init {
     my $self = shift;
 
-    $self->{metadb_table} = 'pagefields' if !defined $self->{metadb_table};
-
-    if (!defined $self->{metadb_fields})
-    {
-        # set default fields
-        $self->{metadb_fields} = [qw(title name pagetype filename parent_page description)];
-    }
+    $self->{primary_fields} = [qw(title name pagetype ext filename parent_page)];
     if (!defined $self->{metadb_db})
     {
         # give a default name
@@ -58,12 +52,13 @@ sub init {
 
 Update the meta information for one page
 
-    $self->update_one_page(%meta);
+    $self->update_one_page($page, %meta);
 
 =cut
 
 sub update_one_page {
     my $self = shift;
+    my $pagename = shift;
     my %args = @_;
 
     if (!$self->_connect())
@@ -71,9 +66,7 @@ sub update_one_page {
         return undef;
     }
 
-    $self->_add_meta_to_db(%args);
-
-    $self->_commit();
+    $self->_add_page_data($pagename, %args);
 
 } # update_one_page
 
@@ -184,30 +177,10 @@ sub _connect {
             return 0;
         }
         $dbh->{sqlite_unicode} = 1;
-
-        # Create the table if it doesn't exist
-        my @field_defs = ();
-        foreach my $field (@{$self->{metadb_fields}})
-        {
-            if (exists $self->{metadb_field_types}->{$field})
-            {
-                push @field_defs, $field . ' ' . $self->{metadb_field_types}->{$field};
-            }
-            else
-            {
-                push @field_defs, $field;
-            }
-        }
-        my $table = $self->{metadb_table};
-        my $q = "CREATE TABLE IF NOT EXISTS $table (page PRIMARY KEY, "
-        . join(", ", @field_defs) .");";
-        my $ret = $dbh->do($q);
-        if (!$ret)
-        {
-            $self->{error} = "metadb failed '$q' : $DBI::errstr";
-            return 0;
-        }
         $self->{dbh} = $dbh;
+
+        # Create the tables if they don't exist
+        $self->_create_tables();
     }
     else
     {
@@ -218,52 +191,202 @@ sub _connect {
     return 1;
 } # _connect
 
-=head2 _add_meta_to_db
+=head2 _create_tables
 
-Add a page's metadata to the database.
+Create the initial tables in the database:
 
-    $self->_add_meta_to_db(%meta);
+pages: (page, title, name, pagetype, ext, filename, parent_page)
+links: (page, links_to)
+attachments: (page, attachment)
+deepfields: (page, field, value)
 
 =cut
-sub _add_meta_to_db {
-    my $self = shift;
-    my %meta = @_;
 
-    if (!$self->_connect())
-    {
-        return undef;
-    }
+sub _create_tables {
+    my $self = shift;
+
+    return unless $self->{dbh};
+
     my $dbh = $self->{dbh};
-    if (!$self->{_transaction_on})
+
+    my $q = "CREATE TABLE IF NOT EXISTS pages (page PRIMARY KEY, " . join(',', @{$self->{primary_fields}}) . ");";
+    my $ret = $dbh->do($q);
+    if (!$ret)
     {
-	my $ret = $dbh->do("BEGIN TRANSACTION;");
-	if (!$ret)
-	{
-	    $self->{error} = "metadb failed BEGIN TRANSACTION : $DBI::errstr";
-            return 0;
-	}
-	$self->{_transaction_on} = 1;
-        $self->{_num_trans} = 0;
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
-    $self->_add_fields(%meta);
-    # do the commits in bursts
-    $self->{_num_trans}++;
-    if ($self->{_transaction_on} and $self->{_num_trans} > 100)
+    $q = "CREATE TABLE IF NOT EXISTS links (page, links_to, UNIQUE(page, links_to));";
+    $ret = $dbh->do($q);
+    if (!$ret)
     {
-	my $ret = $dbh->do("COMMIT;");
-	if (!$ret)
-	{
-	    $self->{error} = "metadb failed COMMIT : $DBI::errstr";
-            return 0;
-	}
-	$self->{_transaction_on} = 0;
-        $self->{_num_trans} = 0;
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
-} # _add_meta_to_db
+    $q = "CREATE TABLE IF NOT EXISTS attachments (page, attachment, UNIQUE(page, attachment));";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "CREATE TABLE IF NOT EXISTS deepfields (page, field, value, UNIQUE(page, field));";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+
+    return 1;
+} # _create_tables
+
+=head2 _generate_flatfields_table
+
+Create and populate the flatfields table using the data from the deepfields table.
+Expects the deepfields table to be up to date, so this needs to be called
+at the end of the scanning pass.
+
+    $self->_generate_flatfields_table();
+
+=cut
+
+sub _generate_flatfields_table {
+    my $self = shift;
+
+    return unless $self->{dbh};
+
+    my $dbh = $self->{dbh};
+
+    my @fieldnames = $self->_get_all_fieldnames();
+
+    my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
+    . join(", ", @fieldnames) .");";
+    my $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+
+    # prepare the insert query
+    my $placeholders = join ", ", ('?') x @fieldnames;
+    my $iq = 'INSERT INTO flatfields (page, '
+    . join(", ", @fieldnames) . ') VALUES (?, ' . $placeholders . ');';
+    my $isth = $dbh->prepare($iq);
+    if (!$isth)
+    {
+        croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
+    }
+
+    # ---------------------------------------------------
+    # Insert values for all the pages
+    # ---------------------------------------------------
+    my $transaction_on = 0;
+    my $num_trans = 0;
+    my @pagenames = $self->_get_all_pagenames();
+    foreach my $page (@pagenames)
+    {
+        if (!$transaction_on)
+        {
+            my $ret = $dbh->do("BEGIN TRANSACTION;");
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
+            }
+            $transaction_on = 1;
+            $num_trans = 0;
+        }
+        my $meta = $self->_get_fields_for_page($page);
+
+        warn __PACKAGE__, " _generate_flatfields_table meta is ", Dump($meta);
+        my @values = ();
+        foreach my $fn (@fieldnames)
+        {
+            my $val = $meta->{$fn};
+            if (!defined $val)
+            {
+                push @values, undef;
+            }
+            elsif (ref $val)
+            {
+                $val = join("|", @{$val});
+                push @values, $val;
+            }
+            else
+            {
+                push @values, $val;
+            }
+        }
+        # we now have values to insert
+        $ret = $isth->execute($page, @values);
+        if (!$ret)
+        {
+            croak __PACKAGE__ . " failed '$iq' (" . join(',', ($page, @values)) . "): $DBI::errstr";
+        }
+        # do the commits in bursts
+        $num_trans++;
+        if ($transaction_on and $num_trans > 100)
+        {
+            $self->_commit();
+            $transaction_on = 0;
+            $num_trans = 0;
+        }
+
+    } # for each page
+    $self->_commit();
+
+    return 1;
+} # _generate_flatfields_table
+
+=head2 _drop_tables
+
+Drop all the tables in the database.
+If one is doing a scan-all-pages pass, dropping and re-creating may be quicker than updating.
+
+=cut
+
+sub _drop_tables {
+    my $self = shift;
+
+    return unless $self->{dbh};
+
+    my $dbh = $self->{dbh};
+
+    my $q = "DROP TABLE IF EXISTS pages;";
+    my $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "DROP TABLE IF EXISTS links_to;";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "DROP TABLE IF EXISTS attachments;";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "DROP TABLE IF EXISTS deepfields;";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "DROP TABLE IF EXISTS flatfields;";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+
+    return 1;
+} # _drop_tables
 
 =head2 _update_all_entries
 
 Update all pages, adding new ones and deleting non-existent ones.
+This expects that the pages passed in are the DEFINITIVE list of pages,
+and if a page isn't in this list, it no longer exists.
 
     $self->_update_all_entries($page=>{...},$page2=>{}...);
 
@@ -274,22 +397,48 @@ sub _update_all_entries {
 
     my $dbh = $self->{dbh};
 
-    # delete obsolete pages
-    my @old_pages = $self->_get_all_pagenames();
-    foreach my $old_pn (@old_pages)
-    {
-        if (!exists $pages{$old_pn})
-        {
-            $self->_delete_page_from_db($old_pn);
-        }
-    }
+##    # delete obsolete pages
+##    my @old_pages = $self->_get_all_pagenames();
+##    foreach my $old_pn (@old_pages)
+##    {
+##        if (!exists $pages{$old_pn})
+##        {
+##            $self->_delete_page_from_db($old_pn);
+##        }
+##    }
+
+    # it may save time to drop all the tables and create them again
+    $self->_drop_tables();
+    $self->_create_tables();
 
     # update/add pages
+    my $transaction_on = 0;
+    my $num_trans = 0;
     foreach my $pn (sort keys %pages)
     {
-        $self->_add_meta_to_db(%{$pages{$pn}});
+        warn "UPDATING $pn\n";
+        if (!$transaction_on)
+        {
+            my $ret = $dbh->do("BEGIN TRANSACTION;");
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
+            }
+            $transaction_on = 1;
+            $num_trans = 0;
+        }
+        $self->_add_page_data($pn, %{$pages{$pn}});
+        # do the commits in bursts
+        $num_trans++;
+        if ($transaction_on and $num_trans > 100)
+        {
+            $self->_commit();
+            $transaction_on = 0;
+            $num_trans = 0;
+        }
     }
     $self->_commit();
+    $self->_generate_flatfields_table();
 
 } # _update_all_entries
 
@@ -305,99 +454,14 @@ sub _commit ($%) {
     my %args = @_;
     my $meta = $args{meta};
 
-    if (!$self->_connect())
-    {
-        return undef;
-    }
-    my $dbh = $self->{dbh};
-    if ($self->{_transaction_on})
-    {
-	my $ret = $dbh->do("COMMIT;");
-	if (!$ret)
-	{
-	    $self->{error} = "metadb failed COMMIT : $DBI::errstr";
-            return 0;
-	}
-	$self->{_transaction_on} = 0;
-        $self->{_num_trans} = 0;
-    }
-} # _commit
+    return unless $self->{dbh};
 
-=head2 _search
-
-Search the database;
-returns the total, the query, and the results for the current page.
-
-$hashref = $dbtable->_search(
-q=>$query_string,
-tags=>$tags,
-p=>$p,
-n=>$items_per_page,
-sort_by=>$order_by,
-);
-
-=cut
-
-sub _search {
-    my $self = shift;
-    my %args = @_;
-
-    my $dbh = $self->{dbh};
-
-    # first find the total
-    my $q = $self->_query_to_sql(%args,get_total=>1);
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
-    }
-    my $ret = $sth->execute();
+    my $ret = $self->{dbh}->do("COMMIT;");
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak __PACKAGE__ . " failed 'COMMIT' : $DBI::errstr";
     }
-    my @ret_rows=();
-    my $total = 0;
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        $total = $row[0];
-    }
-    my $num_pages = 1;
-    if ($args{n})
-    {
-        $num_pages = ceil($total / $args{n});
-        $num_pages = 1 if $num_pages < 1;
-    }
-
-    if ($total > 0)
-    {
-        $q = $self->_query_to_sql(%args,total=>$total);
-        $sth = $dbh->prepare($q);
-        if (!$sth)
-        {
-            $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-            return undef;
-        }
-        $ret = $sth->execute();
-        if (!$ret)
-        {
-            $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-            return undef;
-        }
-
-        while (my $hashref = $sth->fetchrow_hashref)
-        {
-            push @ret_rows, $hashref;
-        }
-    }
-    return {rows=>\@ret_rows,
-        total=>$total,
-        num_pages=>$num_pages,
-        sql=>$q};
-} # _search
+} # _commit
 
 =head2 _get_all_pagenames
 
@@ -412,8 +476,7 @@ sub _get_all_pagenames {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $table = $self->{metadb_table};
-    my $q = "SELECT page FROM $table ORDER BY page;";
+    my $q = "SELECT page FROM pages ORDER BY page;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -437,6 +500,82 @@ sub _get_all_pagenames {
     return @pagenames;
 } # _get_all_pagenames
 
+=head2 _get_all_fieldnames
+
+List of the unique field-names from the deepfields table.
+
+    @fieldnames = $self->_get_all_fieldnames();
+
+=cut
+
+sub _get_all_fieldnames {
+    my $self = shift;
+
+    my $dbh = $self->{dbh};
+    my $q = "SELECT DISTINCT field FROM deepfields ORDER BY field;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    my @fieldnames = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @fieldnames, $row[0];
+    }
+
+    return @fieldnames;
+} # _get_all_fieldnames
+
+=head2 _get_fields_for_page
+
+Get the field-value pairs for a single page from the deepfields table.
+
+    $meta = $self->_get_fields_for_page($page);
+
+=cut
+
+sub _get_fields_for_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = "SELECT field, value FROM deepfields WHERE page = ?;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute($pagename);
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    my %meta = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        my $field = $row[0];
+        my $value = $row[1];
+        $meta{$field} = $value;
+    }
+
+    return \%meta;
+} # _get_fields_for_page
+
 =head2 _page_exists
 
 Does this page exist in the database?
@@ -447,10 +586,10 @@ sub _page_exists {
     my $self = shift;
     my $page = shift;
 
+    return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $table = $self->{metadb_table};
 
-    my $q = "SELECT COUNT(*) FROM $table WHERE page = '$page';";
+    my $q = "SELECT COUNT(*) FROM pages WHERE page = ?;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -458,7 +597,7 @@ sub _page_exists {
         $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
         return undef;
     }
-    my $ret = $sth->execute();
+    my $ret = $sth->execute($page);
     if (!$ret)
     {
         $self->{error} = "FAILED to execute '$q' $DBI::errstr";
@@ -486,7 +625,7 @@ sub _total_pages {
 
     my $dbh = $self->{dbh};
 
-    my $q = $self->_query_to_sql(get_total=>1);
+    my $q = "SELECT COUNT(*) FROM pages;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -509,282 +648,31 @@ sub _total_pages {
     return $total;
 } # _total_pages
 
-=head2 _build_where
+=head2 _add_page_data
 
-Build (part of) a WHERE condition
+Add metadata to db for one page.
 
-$where_cond = $dbtable->build_where(
-    q=>$query_string,
-    field=>$field_name,
-);
+    $self->_add_page_data($page, %meta);
 
 =cut
-
-sub _build_where {
+sub _add_page_data {
     my $self = shift;
-    my %args = @_;
-    my $field = $args{field};
-    my $query_string = $args{q};
-    
-    # no query, no WHERE
-    if (!$query_string)
-    {
-        return '';
-    }
-
-    my $sql_where = '';
-
-    # If there is no field, it is a simple query string;
-    # the simple query string will search all columns in OR fashion
-    # that is (col1 GLOB term OR col2 GLOB term...) etc
-    # only allow for '-' prefix, not the complex Search::Query stuff
-    # Note that if this is a NOT term, the query clause needs to be
-    # (col1 NOT GLOB term AND col2 NOT GLOB term)
-    # and checking for NULL too
-    if (!$field)
-    {
-        my @and_clauses = ();
-        my @terms = split(/[ +]/, $query_string);
-        for (my $i=0; $i < @terms; $i++)
-        {
-            my $term = $terms[$i];
-            my $not = 0;
-            if ($term =~ /^-(.*)/)
-            {
-                $term = $1;
-                $not = 1;
-            }
-            if ($not) # negative term, match NOT AND
-            {
-                my @and_not_clauses = ();
-                foreach my $col (@{$self->{metadb_fields}})
-                {
-                    my $clause = sprintf('(%s IS NULL OR %s NOT GLOB "*%s*")', $col, $col, $term);
-                    push @and_not_clauses, $clause;
-                }
-                push @and_clauses, "(" . join(" AND ", @and_not_clauses) . ")";
-            }
-            else # positive term, match OR
-            {
-                my @or_clauses = ();
-                foreach my $col (@{$self->{metadb_fields}})
-                {
-                    my $clause = sprintf('%s GLOB "*%s*"', $col, $term);
-                    push @or_clauses, $clause;
-                }
-                push @and_clauses, "(" . join(" OR ", @or_clauses) . ")";
-            }
-        }
-        $sql_where = join(" AND ", @and_clauses);
-    }
-    elsif ($field eq 'tags'
-            or $field eq $self->{tagfield})
-    {
-        my $tagfield = $self->{tagfield};
-        my @and_clauses = ();
-        my @terms = split(/[ +]/, $query_string);
-        for (my $i=0; $i < @terms; $i++)
-        {
-            my $term = $terms[$i];
-            my $not = 0;
-            my $equals = 1; # make tags match exactly by default
-            if ($term =~ /^-(.*)/)
-            {
-                $term = $1;
-                $not = 1;
-            }
-            # use * for a glob marker
-            if ($term =~ /^\*(.*)/)
-            {
-                $term = $1;
-                $equals = 0;
-            }
-            if ($not and !$equals)
-            {
-                my $clause = sprintf('(%s IS NULL OR %s NOT GLOB "*%s*")', $tagfield, $tagfield, $term);
-                push @and_clauses, $clause;
-            }
-            elsif ($not and $equals) # negative term, match NOT AND
-            {
-                my $clause = sprintf('(%s IS NULL OR (%s != "%s" AND %s NOT GLOB "%s|*" AND %s NOT GLOB "*|%s|*" AND %s NOT GLOB "*|%s"))',
-                    $tagfield,
-                    $tagfield, $term,
-                    $tagfield, $term,
-                    $tagfield, $term,
-                    $tagfield, $term,
-                );
-                push @and_clauses, $clause;
-            }
-            elsif ($equals) # positive term, match OR
-            {
-                my $clause = sprintf('(%s = "%s" OR %s GLOB "%s|*" OR %s GLOB "*|%s|*" OR %s GLOB "*|%s")',
-                    $tagfield, $term,
-                    $tagfield, $term,
-                    $tagfield, $term,
-                    $tagfield, $term,
-                );
-                push @and_clauses, $clause;
-            }
-            else 
-            {
-                my $clause = sprintf('%s GLOB "*%s*"', $tagfield, $term);
-                push @and_clauses, $clause;
-            }
-        }
-        $sql_where = join(" AND ", @and_clauses);
-    }
-    else # other columns
-    {
-        my $parser = Search::Query->parser(
-            query_class => 'SQL',
-            query_class_opts => {
-                like => 'GLOB',
-                wildcard => '*',
-                fuzzify2 => 1,
-            },
-            null_term => 'NULL',
-            default_field => $field,
-            default_op => '~',
-            fields => [$field],
-            );
-        my $query  = $parser->parse($args{q});
-        $sql_where = $query->stringify;
-    }
-
-    return ($sql_where ? "(${sql_where})" : '');
-} # _build_where
-
-=head2 _query_to_sql
-
-Convert a query string to an SQL select statement
-While this leverages on Select::Query, it does its own thing
-for a generic query and for a tags query
-
-$sql = $dbtable->_query_to_sql(
-q=>$query_string,
-tags=>$tags,
-p=>$p,
-n=>$items_per_page,
-sort_by=>$order_by,
-sort_by2=>$order_by2,
-sort_by3=>$order_by3,
-);
-
-=cut
-
-sub _query_to_sql {
-    my $self = shift;
-    my %args = @_;
-
-    my $p = $args{p};
-    my $items_per_page = $args{n};
-    my $total = ($args{total} ? $args{total} : 0);
-    my $order_by = '';
-    if ($args{sort_by} and $args{sort_by2} and $args{sort_by3})
-    {
-        $order_by = join(', ', $args{sort_by}, $args{sort_by2}, $args{sort_by3});
-    }
-    elsif ($args{sort_by} and $args{sort_by2})
-    {
-        $order_by = join(', ', $args{sort_by}, $args{sort_by2});
-    }
-    elsif ($args{sort_by})
-    {
-        $order_by = $args{sort_by};
-    }
-    else
-    {
-        $order_by = join(', ', @{$self->{default_sort}});
-    }
-
-    my $offset = 0;
-    if ($p and $items_per_page)
-    {
-        $offset = ($p - 1) * $items_per_page;
-        if ($total > 0 and $offset >= $total)
-        {
-            $offset = $total - 1;
-        }
-        elsif ($offset <= 0)
-        {
-            $offset = 0;
-        }
-    }
-
-    my @and_clauses = ();
-    foreach my $col (@{$self->{metadb_fields}})
-    {
-        if ($args{$col})
-        {
-            my $clause = $self->_build_where(field=>$col, q=>$args{$col});
-            push @and_clauses, $clause;
-        }
-    }
-    if ($args{'tags'} and $self->{tagfield} ne 'tags')
-    {
-        my $clause = $self->_build_where(field=>'tags', q=>$args{'tags'});
-        push @and_clauses, $clause;
-    }
-
-    if ($args{q})
-    {
-        my $clause = $self->_build_where(field=>'', q=>$args{q});
-        push @and_clauses, $clause;
-    }
-    # if there's an extra condition in the configuration, add it here
-    if ($self->{extra_cond})
-    {
-        if (@and_clauses)
-        {
-            push @and_clauses, "(" . $self->{extra_cond} . ")";
-        }
-        else
-        {
-            push @and_clauses, $self->{extra_cond};
-        }
-    }
-    my $sql_where = join(" AND ", @and_clauses);
-
-    my $q = '';
-    if ($args{get_total})
-    {
-        $q = "SELECT COUNT(*) FROM " . $self->{metadb_table};
-        $q .= " WHERE $sql_where" if $sql_where;
-    }
-    else
-    {
-        $q = "SELECT * FROM " . $self->{metadb_table};
-        $q .= " WHERE $sql_where" if $sql_where;
-        $q .= " ORDER BY $order_by" if $order_by;
-        $q .= " LIMIT $items_per_page" if $items_per_page;
-        $q .= " OFFSET $offset" if $offset;
-    }
-
-    return $q;
-} # _query_to_sql
-
-=head2 _add_fields
-
-Add metadata to db.
-
-    $self->_add_fields(%meta);
-
-=cut
-sub _add_fields {
-    my $self = shift;
+    my $pagename = shift;
     my %meta = @_;
-    my $pagename = $meta{pagename};
 
+    return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $table = $self->{metadb_table};
 
+    # ------------------------------------------------
+    # TABLE: pages
+    # ------------------------------------------------
     my @values = ();
-    foreach my $fn (@{$self->{metadb_fields}})
+    foreach my $fn (@{$self->{primary_fields}})
     {
 	my $val = $meta{$fn};
 	if (!defined $val)
 	{
-	    push @values, "NULL";
+	    push @values, undef;
 	}
 	elsif (ref $val)
 	{
@@ -811,48 +699,130 @@ sub _add_fields {
     # This is faster than REPLACE because it doesn't need
     # to rebuild indexes.
     my $page_exists = $self->_page_exists($pagename);
-    my $iquery;
+    my $q;
+    my $ret;
     if ($page_exists)
     {
-	$iquery = "UPDATE $table SET ";
-	for (my $i=0; $i < @values; $i++)
-	{
-	    $iquery .= sprintf('%s = %s', $self->{metadb_fields}->[$i], $values[$i]);
-	    if ($i + 1 < @values)
-	    {
-		$iquery .= ", ";
-	    }
-	}
-	$iquery .= " WHERE page = '$pagename';";
+        $q = "UPDATE pages SET ";
+        for (my $i=0; $i < @values; $i++)
+        {
+            $q .= sprintf('%s = %s', $self->{primary_fields}->[$i], $values[$i]);
+            if ($i + 1 < @values)
+            {
+                $q .= ", ";
+            }
+        }
+        $q .= " WHERE page = '$pagename';";
+        $ret = $dbh->do($q);
+        if (!$ret)
+        {
+            croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+        }
     }
     else
     {
-	$iquery = "INSERT INTO $table (page, "
-	. join(", ", @{$self->{metadb_fields}}) . ") VALUES ('$pagename', "
-	. join(", ", @values) . ");";
+        my $placeholders = join ", ", ('?') x @{$self->{primary_fields}};
+        $q = 'INSERT INTO pages (page, '
+        . join(", ", @{$self->{primary_fields}}) . ') VALUES (?, ' . $placeholders . ');';
+        my $sth = $dbh->prepare($q);
+        if (!$sth)
+        {
+            croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+        }
+        $ret = $sth->execute($pagename, @values);
+        if (!$ret)
+        {
+            croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+        }
     }
-    my $ret = $dbh->do($iquery);
-    if (!$ret)
+
+    # ------------------------------------------------
+    # TABLE: links
+    # ------------------------------------------------
+    if (exists $meta{links} and defined $meta{links})
     {
-	$self->{error} = "metadb failed insert/update '$iquery' : $DBI::errstr";
-        return 0;
+        my @links = ();
+        if (ref $meta{links})
+        {
+            @links = @{$meta{links}};
+        }
+        else # one scalar link
+        {
+            push @links, $meta{links};
+        }
+        foreach my $link (@links)
+        {
+            # the "OR IGNORE" allows duplicates to be silently discarded
+            $q = "INSERT OR IGNORE INTO links(page, links_to) VALUES('$pagename', '$link');";
+            $ret = $dbh->do($q);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            }
+        }
     }
+    # ------------------------------------------------
+    # TABLE: attachments
+    # ------------------------------------------------
+    if (exists $meta{attachments} and defined $meta{attachments})
+    {
+        my @attachments = ();
+        if (ref $meta{attachments})
+        {
+            @attachments = @{$meta{attachments}};
+        }
+        else # one scalar attachment
+        {
+            push @attachments, $meta{attachments};
+        }
+        foreach my $att (@attachments)
+        {
+            # the "OR IGNORE" allows duplicates to be silently discarded
+            $q = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES('$pagename', '$att');";
+            $ret = $dbh->do($q);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            }
+        }
+    }
+    # ------------------------------------------------
+    # TABLE: deepfields
+    #
+    # This is for ALL the meta-data about a page
+    # ------------------------------------------------
+    foreach my $field (sort keys %meta)
+    {
+        my $value = $meta{$field};
+
+        next unless defined $value;
+
+        $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
+        $ret = $dbh->do($q);
+        if (!$ret)
+        {
+            croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+        }
+    }
+
     return 1;
-} # _add_fields
+} # _add_page_data
 
 sub _delete_page_from_db {
     my $self = shift;
     my $page = shift;
 
     my $dbh = $self->{dbh};
-    my $table = $self->{metadb_table};
 
-    my $q = "DELETE FROM $table WHERE page = ?;";
-    my $sth = $dbh->prepare($q);
-    my $ret = $sth->execute($page);
-    if (!$ret)
+    foreach my $table (qw(pages links attachments deepfields flatfields))
     {
-        die "FAILED query '$q' $DBI::errstr";
+        my $q = "DELETE FROM $table WHERE page = ?;";
+        my $sth = $dbh->prepare($q);
+        my $ret = $sth->execute($page);
+        if (!$ret)
+        {
+            croak __PACKAGE__, "FAILED query '$q' $DBI::errstr";
+        }
     }
 
 } # _delete_page_from_db

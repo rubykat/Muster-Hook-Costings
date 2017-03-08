@@ -1,0 +1,5 @@
+# Documentation
+
+Some documentation for Muster.
+
+* [design](docs/design)

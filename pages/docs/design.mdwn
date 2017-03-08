@@ -1,0 +1,96 @@
+# Design
+
+I want this CMS/Wiki to have the best bits from Contenticious, IkiWiki, and PmWiki.
+
+* Mojolicious framework - done. Will need to be reworked a lot along the way, I expect.
+
+## Multiple Page-Stores
+
+This from PmWiki. The ability to have an abstract "PageStore" class, and it's up to it to figure out where to get the pages from.
+
+I have this partially implemented: I have multiple directory-based PageStores. I'm not sure how to abstract it out to non-files.
+I'll put that off until later; it may be needless, since I could develop a separate app which is mounted in a different spot, like Marky is.
+
+As with PmWiki, the PageStores are ordered, and whichever page is found first is the one that takes precedence.
+
+## First-Class Meta-Data
+
+Have page fields built in - as with PmWiki's PageVariables.
+For text-based pages, use a YAML prefix section.
+For other kinds of pages, do things like get EXIF data.
+
+## Transparent Parsing of Files of Different Types
+
+From IkiWiki. There, one adds a plugin which parses a new filetype.
+I have a partial implementation: new filetypes are done by adding a new module Muster::Leaf::File::*file-extension*.
+This may need to be reworked depending on how the separation of scanning and rendering goes.
+
+## Separate Scanning Pass
+
+This from IkiWiki; the scanning part of IkiWiki doesn't take long, it's the building of everything that does -- and that's my fault, because my plugins basically stuff up the dependency tree.
+But I like the idea of having a scanning pass which collects up all the meta-data needed for later on.
+
+I'm storing it in an SQLite database rather than what IkiWiki was using, because I like the flexibility of an SQL database for looking things up. While IkiWiki has a clever idea of page-conditions, why reinvent the wheel when SQL is such a powerful query language?
+On the other hand, it might be worthwhile to have a key-value NoSQL database instead or as well, if I can find a good serverless one, because I'll also need to be storing arbitrary data as well as pre-defined data. Hmmmm.
+
+The types of data that need to be stored:
+
+* known properties of pages, such as pagename, title, (filename) etc
+* multi-valued known properties of pages, that is, links (what pages this page links to, what pages link to this page). This would be most easily done in a two-column SQL table (page, links_to).
+* unknown arbitrary properties of pages that are needed by plugins. This would be most easily done with a key-value database where the key is the pagename.
+* pre-defined arbitrary properties of pages, a subset of all page properties that we want in an SQL database so we can write cool reports on them.
+
+Possible way out, if it works: use SQLite, have a deep table (page, key, value) which stores all the unknown arbitrary values, and then at the end of the scanning pass, make a flat table whose columns are all the keys, and whose rows are all the values. It might not work; it might take too long to build. But if it does, it would be a way of having our cake and eating it too.
+
+It would use the following tables:
+
+* pages: (page, title, parent_page, pagetype, filename...)
+* links: (page, links_to)
+* attachments: (page, file_below_page)
+* deepfields: (page, key, value)
+* flatfields: (page, key1, key2, key3....)
+
+Two modes of scanning:
+
+* scan everything
+* scan one page
+
+My intent is to eventually have all pages stored in a git repo, and have a git post-update hook which calls the scan-one-page for that file.
+But that wouldn't cover the case of pages being deleted; not sure what to do about that one.
+
+## Process Phases With Hooks
+
+From both PmWiki and IkiWiki.
+IkiWiki divides the process into distinct phases,
+while PmWiki enables more fine-grained control of the order of when things are done, by allowing one to specify which "item" one's hook is inserted before or after.
+See [Writing Plugins](http://ikiwiki.info/plugins/write/) for the full set of IkiWiki hooks.
+
+A subset of relevant IkiWiki hooks:
+
+* scan - grabs the info needed for all the later passes
+* filter - runs on full raw source of the page
+* preprocess - does the preprocess directives
+* linkify - does the wiki links -- this needs the scan info to see which pages exist and which don't
+* htmlize - convert to HTML
+* sanitize - sanitize the HTML
+* format - runs on the HTML version of the page
+
+## Plugins
+
+From PmWiki and IkiWiki and other wikis.
+I'm not sure what approach to take for this.
+
+## Page Inclusions
+
+From PmWiki and IkiWiki. Be able to include one page in another page without breaking references and links etc.
+This is tricky; one could get into a lot of recursion here.
+
+## Sub-Pages
+
+From PmWiki and other wikis. Use the page-inclusion mechanism to have separate pages for defining sidebars, headers and footers.
+
+## Issues That Need Fixing
+
+* Foil - breadcrumbs
+* Foil - dynamic navbar
+* Foil - dynamic title

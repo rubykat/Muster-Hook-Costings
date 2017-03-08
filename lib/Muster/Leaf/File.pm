@@ -25,10 +25,12 @@ use Carp;
 use Mojo::Util      'decode';
 use File::Basename 'basename';
 use YAML::Any;
+use Lingua::EN::Titlecase;
 
 has filename   => sub { croak 'no filename given' };
 has name       => sub { shift->build_name };
 has pagetype   => sub { shift->build_pagetype };
+has ext        => sub { shift->build_ext };
 has pagename   => sub { shift->build_pagename };
 
 =head2 reclassify
@@ -51,6 +53,17 @@ sub reclassify {
     {
         $subtype->import();
         return bless $self, $subtype;
+    }
+    else
+    {
+        $subtype = __PACKAGE__ . "::NONE";
+        $has_subtype = eval "require $subtype;";
+        if ($has_subtype)
+        {
+            $subtype->import();
+            $self->{pagetype} = 'NONE';
+            return bless $self, $subtype;
+        }
     }
     return undef;
 }
@@ -85,6 +98,17 @@ sub build_pagetype {
     return $ext;
 }
 
+sub build_ext {
+    my $self = shift;
+
+    my $ext = '';
+    if ($self->filename =~ /\.(\w+)$/)
+    {
+        $ext = $1;
+    }
+    return $ext;
+}
+
 sub build_raw {
     my $self = shift;
 
@@ -99,7 +123,28 @@ sub build_raw {
 sub build_meta {
     my $self    = shift;
 
-    croak 'build_meta needs to be overwritten by subclass';
+    # there is always the default information
+    # of pagename, filename etc.
+    my $meta = {
+        pagename=>$self->pagename,
+        parent_page=>$self->parent_page,
+        filename=>$self->filename,
+        pagetype=>$self->pagetype,
+        name=>$self->name,
+        title=>$self->derive_title,
+    };
+
+    return $meta;
+}
+
+sub derive_title {
+    my $self = shift;
+
+    # get the title from the name of the file
+    my $name = $self->name;
+    $name =~ s/_/ /g;
+    my $tc = Lingua::EN::Titlecase->new($name);
+    return $tc->title();
 }
 
 sub build_html {

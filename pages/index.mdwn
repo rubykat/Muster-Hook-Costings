@@ -1,3 +1,5 @@
-# Hello World
+# Muster
 
-This is a boring index page.
+Welcome to Muster, a personal CMS...
+
+* [docs](docs)

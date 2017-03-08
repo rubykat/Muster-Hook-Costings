@@ -37,7 +37,6 @@ has pagename       => sub { shift->build_pagename };
 has name       => sub { shift->build_name };
 has dir_children    => sub { shift->build_dir_children };
 has file_children    => sub { shift->build_file_children };
-has leaf        => sub { shift->find_index };
 
 sub init {
     my $self = shift;
@@ -118,7 +117,6 @@ sub build_file_children {
             my $node = Muster::Leaf::File->new(
                 filename    => $entry,
                 parent_page => ($self->is_root ? '' : $self->pagename),
-                parent_node => $self,
             );
             $node = $node->reclassify();
             if ($node)
@@ -130,7 +128,7 @@ sub build_file_children {
     return \@children;
 }
 
-sub find_index {
+sub this_leaf {
     my $self = shift;
 
     # The index file for a directory is either
@@ -190,25 +188,29 @@ sub find {
 
 sub get_all_meta {
     my $self = shift;
+    my $verbose = shift;
 
     my $merge = Hash::Merge->new();
     my $pages = {};
 
     # first, this directory/index
-    my $index = $self->find_index();
+    my $index = $self->this_leaf();
     return unless $index;
+    warn "SCANNING ", $self->pagename, "\n" if $verbose;
     $pages->{$self->pagename} = $index->meta;
 
     # files below this
     for my $leaf (@{$self->file_children})
     {
+        warn "SCANNING ", $leaf->pagename, "\n" if $verbose;
         $pages->{$leaf->pagename} = $leaf->meta;
     }
 
     # directories below this
     for my $dir (@{$self->dir_children})
     {
-        my $dir_pages = $dir->get_all_meta();
+        warn "SCANNING DIR: ", $dir->pagename, "\n" if $verbose;
+        my $dir_pages = $dir->get_all_meta($verbose);
         my $new_pages = $merge->merge($pages,$dir_pages);
         $pages = $new_pages;
     }

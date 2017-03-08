@@ -90,7 +90,7 @@ sub scan_all {
     my $all_pages = $self->{pages}->all_pages();
     $self->{metadb}->update_all_pages(%{$all_pages});
 
-    print Dump($all_pages);
+    print "DONE\n";
 } # scan_all
 
 1; # End of Muster::Scanner

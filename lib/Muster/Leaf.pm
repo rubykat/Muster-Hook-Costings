@@ -18,7 +18,6 @@ use Mojo::Base -base;
 
 use Carp;
 
-has parent_node => undef;
 has pagename    => '';
 has parent_page => '';
 has name        => sub { shift->build_name };

@@ -23,6 +23,7 @@ use common::sense;
 use DBI;
 use Text::NeatTemplate;
 use YAML::Any;
+use File::Slurper 'read_binary';
 use POSIX qw(ceil);
 use Mojo::URL;
 
@@ -120,20 +121,58 @@ sub _serve_page {
         return;
     }
 
-    my $html = $leaf->html();
-    unless (defined $html)
+    if ($leaf->pagetype eq 'NONE')
     {
-        $c->reply->not_found;
-        return;
+        $self->_serve_file($c, $leaf->filename);
     }
+    else
+    {
+        my $html = $leaf->html();
+        unless (defined $html)
+        {
+            $c->reply->not_found;
+            return;
+        }
 
-    $c->stash('pagename' => $pagename);
-    $c->stash('content' => $html);
-    $c->render(template => 'page');
+        $c->stash('pagename' => $pagename);
+        $c->stash('content' => $html);
+        $c->render(template => 'page');
+    }
 
     # cache this page or not?
     $leaf->decache unless $app->config->{'cached'};
 } # _serve_page
+
+=head2 _serve_file
+
+Serve a file rather than a page.
+    
+    $self->_serve_file($filename);
+
+=cut
+
+sub _serve_file {
+    my $self = shift;
+    my $c = shift;
+    my $filename = shift;
+
+    if (!-f $filename)
+    {
+        # not found
+        return;
+    }
+    # extenstion is format (exclude the dot)
+    my $ext = '';
+    if ($filename =~ /\.(\w+)$/)
+    {
+        $ext = $1;
+    }
+    # read the image
+    my $bytes = read_binary($filename);
+
+    # now display the logo
+    $c->render(data => $bytes, format => $ext);
+} # _serve_file
 
 =head2 _total_pages
 

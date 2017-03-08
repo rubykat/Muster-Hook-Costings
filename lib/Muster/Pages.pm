@@ -93,6 +93,15 @@ sub find {
         $i++;
     }
 
+    return undef unless $node;
+
+    # the node could be a Leaf or a PageStore; we want a Leaf
+    my $node_type = ref $node;
+    if ($node_type =~ /PageStore/)
+    {
+        $node = $node->leaf;
+    }
+
     return $node;
 } # find
 
@@ -113,7 +122,7 @@ sub all_pages {
     for (my $i = 0; $i < scalar @{$self->{_sources}}; $i++)
     {
         my $top_node = $self->{_sources}[$i];
-        my $pages = $top_node->get_all_meta();
+        my $pages = $top_node->get_all_meta(1);
         my $new_pages = $merge->merge($all_pages, $pages);
         $all_pages = $new_pages;
     }

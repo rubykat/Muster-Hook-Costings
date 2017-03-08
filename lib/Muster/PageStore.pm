@@ -21,6 +21,12 @@ use Carp;
 has parent_page => '';
 has name        => sub { shift->build_name };
 has pagename        => sub { shift->build_pagename };
+has leaf        => sub { shift->this_leaf };
+
+sub this_leaf {
+    my $self = shift;
+    croak 'this_leaf needs to be overwritten by subclass';
+}
 
 sub build_name {
     my $self = shift;
@@ -40,7 +46,7 @@ sub get_all_meta {
 sub find {
     my ($self, @names) = @_;
 
-    # no search
+    # can only return self, we ain't searching
     return $self unless @names;
 
     # not found
