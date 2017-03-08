@@ -17,12 +17,6 @@ Pages controller for Muster
 
 use Mojo::Base 'Mojolicious::Controller';
 
-sub options {
-    my $c  = shift;
-    $c->muster_set_options();
-    $c->render(template => 'settings');
-}
-
 sub pagelist {
     my $c  = shift;
     $c->render(template=>'pagelist');

@@ -112,9 +112,16 @@ sub _serve_page {
     my $c = shift;
     my $app = $c->app;
 
-    my $pagename = $c->param('pagename') // '';
+    my $pagename = $c->param('pagename') // 'index';
 
-    my $leaf = $self->{pages}->find($pagename);
+    my $info = $self->{metadb}->page_info($pagename);
+    my $leaf = undef;
+    if (-f $info->{filename})
+    {
+        $leaf = Muster::Leaf::File->new(%{$info});
+        $leaf = $leaf->reclassify();
+    }
+
     unless (defined $leaf)
     {
         $c->reply->not_found;
@@ -140,7 +147,7 @@ sub _serve_page {
     }
 
     # cache this page or not?
-    $leaf->decache unless $app->config->{'cached'};
+    #$leaf->decache unless $app->config->{'cached'};
 } # _serve_page
 
 =head2 _serve_file
@@ -184,11 +191,11 @@ sub _total_pages {
     my $self  = shift;
     my $c  = shift;
 
-    my $total = $self->{pages}->total_pages();
+    my $total = $self->{metadb}->total_pages();
     if (!defined $total)
     {
         $c->render(template => 'apperror',
-            errormsg=>$self->{pages}->what_error());
+            errormsg=>"UNKNOWN");
         return undef;
     }
     return $total;
@@ -226,99 +233,18 @@ sub _pagelist {
     my $pagename = $c->param('pagename') // '';
     my $opt_url = $c->url_for("/opt");
     my $location = $c->url_for($pagename);
-    my $res = $self->{pages}->pagelist(location=>$location,
+    my $res = $self->{metadb}->pagelist(location=>$location,
         opt_url=>$opt_url,
         pagename=>$pagename,
         n=>0,
     );
     if (!defined $res)
     {
-        $c->render(template => 'apperror',
-            errormsg=>$self->{pages}->what_error());
+        $c->render(template => 'apperror');
         return undef;
     }
     return $res->{results};
 } # _pagelist
-
-=head2 _set_options
-
-Set options in the session
-
-=cut
-
-sub _set_options {
-    my $self  = shift;
-    my $c  = shift;
-    my %args = @_;
-
-    # Set options for things like n
-    my @db = (sort keys %{$self->{dbtables}});
-
-    my @fields = (qw(n));
-    foreach my $db (@db)
-    {
-        push @fields, "${db}_sort_by";
-        push @fields, "${db}_sort_by2";
-        push @fields, "${db}_sort_by3";
-    }
-    my %fields_set = ();
-    foreach my $field (@fields)
-    {
-        my $val = $c->param($field);
-        if ($val)
-        {
-            $c->session->{$field} = $val;
-            $fields_set{$field} = 1;
-        }
-        else
-        {
-            if ($field =~ /(\w+)_sort_by./)
-            {
-                # We want to delete later sort-by values
-                # if they are blank and the first one was set,
-                # because we want to be able to sort by just
-                # one or two fields if we want.
-                my $db = $1;
-                if ($fields_set{"${db}_sort_by"})
-                {
-                    delete $c->session->{$field};
-                }
-            }
-        }
-    }
-    my $referrer = $c->req->headers->referrer;
-} # _set_options
-
-=head2 _settings
-
-Show the current settings
-
-=cut
-
-sub _settings {
-    my $self  = shift;
-    my $c  = shift;
-    my %args = @_;
-
-    my $db = $c->param('db');
-
-    my @fields = (qw(n));
-    push @fields, "${db}_sort_by";
-    push @fields, "${db}_sort_by2";
-    push @fields, "${db}_sort_by3";
-    
-    my @out = ();
-    foreach my $field (@fields)
-    {
-        my $val = $c->session->{$field};
-        push @out, "<p><b>$field:</b> $val</p>";
-    }
-    my $referrer = $c->req->headers->referrer;
-    print STDERR "_settings referrer=$referrer\n";
-    push @out, "<p>Back: <a href='$referrer'>$referrer</a></p>";
-
-    return join("\n", @out);
-} # _settings
 
 1; # End of Muster::Plugin::PagesHelper
 __END__

@@ -111,7 +111,6 @@ sub startup {
     my $r = $self->routes;
 
     $r->get('/')->to('pages#page');
-    $r->get('/opt')->to('pages#options');
     $r->get('/pagelist')->to('pages#pagelist');
     $r->get('/debug')->to('pages#debug');
     $r->get('/debug/*pagename')->to('pages#debug');

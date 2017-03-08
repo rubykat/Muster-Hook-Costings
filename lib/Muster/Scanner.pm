@@ -71,11 +71,36 @@ sub scan_one_page {
         return;
     }
     # add the meta to the metadb
-    $self->{metadb}->update_one_page(%{$meta});
+    $self->{metadb}->update_one_page($pagename, %{$meta});
 
     print Dump($meta);
 
 } # scan_one_page
+
+=head2 delete_one_page
+
+Delete a single page.
+
+    $self->delete_one_page($page);
+
+=cut
+
+sub delete_one_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    my $app = $self->command->app;
+
+    if ($self->{metadb}->delete_one_page($pagename))
+    {
+        print "DELETED: $pagename\n";
+    }
+    else
+    {
+        print "UNKNOWN: $pagename\n";
+    }
+
+} # delete_one_page
 
 =head2 scan_all
 

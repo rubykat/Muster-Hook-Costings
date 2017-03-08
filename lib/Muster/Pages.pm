@@ -72,7 +72,7 @@ sub init {
 
 =head2 find
 
-Find a page.
+Find a page in the pagestores.
 
 =cut
 
@@ -129,43 +129,6 @@ sub all_pages {
 
     return $all_pages;
 } # all_pages
-
-=head2 pagelist
-
-List of all the pages.
-
-=cut
-
-sub pagelist {
-    my $self = shift;
-    my %args = @_;
-
-} # pagelist
-
-=head2 total_pages
-
-Total number of pages.
-
-=cut
-
-sub total_pages {
-    my $self = shift;
-    my %args = @_;
-
-} # total_pages
-
-=head2 what_error
-
-There was an error, what was it?
-
-=cut
-
-sub what_error {
-    my $self = shift;
-    my %args = @_;
-
-    return $self->{error};
-} # what_error
 
 =head1 Helper Functions
 

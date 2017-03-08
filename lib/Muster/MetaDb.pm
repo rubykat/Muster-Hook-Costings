@@ -89,6 +89,52 @@ sub update_all_pages {
 
 } # update_all_pages
 
+=head2 delete_one_page
+
+Delete the meta information for one page
+
+    $self->delete_one_page($page);
+
+=cut
+
+sub delete_one_page {
+    my $self = shift;
+    my $pagename = shift;
+    my %args = @_;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    if ($self->_page_exists($pagename))
+    {
+        return $self->_delete_page_from_db($pagename);
+    }
+
+    return 0;
+} # delete_one_page
+
+=head2 page_info
+
+Get the info about one page. Returns undef if the page isn't there.
+
+    my $meta = $self->page_info($pagename);
+
+=cut
+
+sub page_info {
+    my $self = shift;
+    my $pagename = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    return $self->_get_page_meta($pagename);
+} # page_info
+
 =head2 pagelist
 
 Query the database, return a list of pages
@@ -294,7 +340,6 @@ sub _generate_flatfields_table {
         }
         my $meta = $self->_get_fields_for_page($page);
 
-        warn __PACKAGE__, " _generate_flatfields_table meta is ", Dump($meta);
         my @values = ();
         foreach my $fn (@fieldnames)
         {
@@ -396,16 +441,6 @@ sub _update_all_entries {
     my %pages = @_;
 
     my $dbh = $self->{dbh};
-
-##    # delete obsolete pages
-##    my @old_pages = $self->_get_all_pagenames();
-##    foreach my $old_pn (@old_pages)
-##    {
-##        if (!exists $pages{$old_pn})
-##        {
-##            $self->_delete_page_from_db($old_pn);
-##        }
-##    }
 
     # it may save time to drop all the tables and create them again
     $self->_drop_tables();
@@ -575,6 +610,45 @@ sub _get_fields_for_page {
 
     return \%meta;
 } # _get_fields_for_page
+
+=head2 _get_page_meta
+
+Get the meta-data for a single page from the flatfields table.
+
+    $meta = $self->_get_page_meta($page);
+
+=cut
+
+sub _get_page_meta {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+
+    my $q = "SELECT * FROM flatfields WHERE page = ?;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute($pagename);
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    # return the first matching row because there should be only one row
+    my $meta;
+    if ($meta = $sth->fetchrow_hashref)
+    {
+        return $meta;
+    }
+
+    return undef;
+} # _get_page_meta
 
 =head2 _page_exists
 
@@ -825,6 +899,7 @@ sub _delete_page_from_db {
         }
     }
 
+    return 1;
 } # _delete_page_from_db
 
 1; # End of Muster::MetaDb
