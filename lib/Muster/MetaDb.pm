@@ -241,7 +241,7 @@ sub _connect {
 
 Create the initial tables in the database:
 
-pages: (page, title, name, pagetype, ext, filename, parent_page)
+pagefiles: (page, title, name, pagetype, ext, filename, parent_page)
 links: (page, links_to)
 attachments: (page, attachment)
 deepfields: (page, field, value)
@@ -255,7 +255,7 @@ sub _create_tables {
 
     my $dbh = $self->{dbh};
 
-    my $q = "CREATE TABLE IF NOT EXISTS pages (page PRIMARY KEY, " . join(',', @{$self->{primary_fields}}) . ");";
+    my $q = "CREATE TABLE IF NOT EXISTS pagefiles (page PRIMARY KEY, " . join(',', @{$self->{primary_fields}}) . ");";
     my $ret = $dbh->do($q);
     if (!$ret)
     {
@@ -393,13 +393,13 @@ sub _drop_tables {
 
     my $dbh = $self->{dbh};
 
-    my $q = "DROP TABLE IF EXISTS pages;";
+    my $q = "DROP TABLE IF EXISTS pagefiles;";
     my $ret = $dbh->do($q);
     if (!$ret)
     {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
-    $q = "DROP TABLE IF EXISTS links_to;";
+    $q = "DROP TABLE IF EXISTS links;";
     $ret = $dbh->do($q);
     if (!$ret)
     {
@@ -498,6 +498,43 @@ sub _commit ($%) {
     }
 } # _commit
 
+=head2 _get_all_pagefiles
+
+List of all pagefiles
+
+$dbtable->_get_all_pagefiles(%args);
+
+=cut
+
+sub _get_all_pagefiles {
+    my $self = shift;
+    my %args = @_;
+
+    my $dbh = $self->{dbh};
+    my $q = "SELECT page FROM pagefiles ORDER BY page;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    my @pagenames = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @pagenames, $row[0];
+    }
+
+    return @pagenames;
+} # _get_all_pagefiles
+
 =head2 _get_all_pagenames
 
 List of all pagenames
@@ -511,7 +548,7 @@ sub _get_all_pagenames {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT page FROM pages ORDER BY page;";
+    my $q = "SELECT page FROM pagefiles WHERE pagetype != 'NONE' ORDER BY page;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -663,7 +700,7 @@ sub _page_exists {
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT COUNT(*) FROM pages WHERE page = ?;";
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE page = ?;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -686,9 +723,45 @@ sub _page_exists {
     return $total > 0;
 } # _page_exists
 
-=head2 _total_pages
+=head2 _total_pagefiles
 
 Find the total records in the database.
+
+$dbtable->_total_pagefiles();
+
+=cut
+
+sub _total_pagefiles {
+    my $self = shift;
+
+    my $dbh = $self->{dbh};
+
+    my $q = "SELECT COUNT(*) FROM pagefiles;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
+        return undef;
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
+        return undef;
+    }
+    my $total = 0;
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        $total = $row[0];
+    }
+    return $total;
+} # _total_pagefiles
+
+=head2 _total_pages
+
+Find the total number of pages.
 
 $dbtable->_total_pages();
 
@@ -699,7 +772,7 @@ sub _total_pages {
 
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT COUNT(*) FROM pages;";
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != 'NONE';";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -738,7 +811,7 @@ sub _add_page_data {
     my $dbh = $self->{dbh};
 
     # ------------------------------------------------
-    # TABLE: pages
+    # TABLE: pagefiles
     # ------------------------------------------------
     my @values = ();
     foreach my $fn (@{$self->{primary_fields}})
@@ -768,7 +841,7 @@ sub _add_page_data {
     my $ret;
     if ($page_exists)
     {
-        $q = "UPDATE pages SET ";
+        $q = "UPDATE pagefiles SET ";
         for (my $i=0; $i < @values; $i++)
         {
             $q .= sprintf('%s = ?', $self->{primary_fields}->[$i]);
@@ -792,7 +865,7 @@ sub _add_page_data {
     else
     {
         my $placeholders = join ", ", ('?') x @{$self->{primary_fields}};
-        $q = 'INSERT INTO pages (page, '
+        $q = 'INSERT INTO pagefiles (page, '
         . join(", ", @{$self->{primary_fields}}) . ') VALUES (?, ' . $placeholders . ');';
         my $sth = $dbh->prepare($q);
         if (!$sth)
@@ -860,18 +933,22 @@ sub _add_page_data {
     # TABLE: deepfields
     #
     # This is for ALL the meta-data about a page
+    # Only add in real pages, not non-pages
     # ------------------------------------------------
-    foreach my $field (sort keys %meta)
+    if ($meta{pagetype} ne 'NONE')
     {
-        my $value = $meta{$field};
-
-        next unless defined $value;
-
-        $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
-        $ret = $dbh->do($q);
-        if (!$ret)
+        foreach my $field (sort keys %meta)
         {
-            croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            my $value = $meta{$field};
+
+            next unless defined $value;
+
+            $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
+            $ret = $dbh->do($q);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            }
         }
     }
 
@@ -884,7 +961,7 @@ sub _delete_page_from_db {
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pages links attachments deepfields flatfields))
+    foreach my $table (qw(pagefiles links attachments deepfields flatfields))
     {
         my $q = "DELETE FROM $table WHERE page = ?;";
         my $sth = $dbh->prepare($q);

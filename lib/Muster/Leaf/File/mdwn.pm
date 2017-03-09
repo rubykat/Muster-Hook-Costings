@@ -144,7 +144,6 @@ sub get_yaml_part {
         }
     }
     close($fh);
-    warn __PACKAGE__, " get_yaml_part YAML is $yaml_str\n";
     return $yaml_str;
 }
 

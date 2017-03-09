@@ -40,12 +40,13 @@ The types of data that need to be stored:
     * siblings
     * children
 * unknown arbitrary properties of pages that are needed by plugins. Done initially with a multi-valued deep table (page, field, value).
+    * should only add to this table if the item is a page and not a non-page
 * a flattened version of the deep table, so that all the properties of a page are in one row; this makes reporting easier
     * at the end of the scanning pass, make this table, whose columns are all the fields from the deep table, and whose rows are all the values.
 
 Tables:
 
-* pages: (page, title, parent_page, pagetype, filename...)
+* pagefiles: (page, title, parent_page, pagetype, filename...)
 * links: (page, links_to)
 * siblings: (page, sibling)
 * children: (page, child)
