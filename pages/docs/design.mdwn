@@ -31,32 +31,42 @@ This from IkiWiki; the scanning part of IkiWiki doesn't take long, it's the buil
 But I like the idea of having a scanning pass which collects up all the meta-data needed for later on.
 
 I'm storing it in an SQLite database rather than what IkiWiki was using, because I like the flexibility of an SQL database for looking things up. While IkiWiki has a clever idea of page-conditions, why reinvent the wheel when SQL is such a powerful query language?
-On the other hand, it might be worthwhile to have a key-value NoSQL database instead or as well, if I can find a good serverless one, because I'll also need to be storing arbitrary data as well as pre-defined data. Hmmmm.
 
 The types of data that need to be stored:
 
 * known properties of pages, such as pagename, title, (filename) etc
-* multi-valued known properties of pages, that is, links (what pages this page links to, what pages link to this page). This would be most easily done in a two-column SQL table (page, links_to).
-* unknown arbitrary properties of pages that are needed by plugins. This would be most easily done with a key-value database where the key is the pagename.
-* pre-defined arbitrary properties of pages, a subset of all page properties that we want in an SQL database so we can write cool reports on them.
+* multi-valued known properties of pages
+    * links
+    * siblings
+    * children
+* unknown arbitrary properties of pages that are needed by plugins. Done initially with a multi-valued deep table (page, field, value).
+* a flattened version of the deep table, so that all the properties of a page are in one row; this makes reporting easier
+    * at the end of the scanning pass, make this table, whose columns are all the fields from the deep table, and whose rows are all the values.
 
-Possible way out, if it works: use SQLite, have a deep table (page, key, value) which stores all the unknown arbitrary values, and then at the end of the scanning pass, make a flat table whose columns are all the keys, and whose rows are all the values. It might not work; it might take too long to build. But if it does, it would be a way of having our cake and eating it too.
-
-It would use the following tables:
+Tables:
 
 * pages: (page, title, parent_page, pagetype, filename...)
 * links: (page, links_to)
-* attachments: (page, file_below_page)
-* deepfields: (page, key, value)
-* flatfields: (page, key1, key2, key3....)
+* siblings: (page, sibling)
+* children: (page, child)
+* deepfields: (page, field, value)
+* flatfields: (page, field1, field2, field3....)
 
-Two modes of scanning:
+Non-pages will be special "pages" with a type of "NONE", and the URL will be parent/basename.ext (rather than parent/basename) and the binary file will be served.
+
+Modes of scanning:
 
 * scan everything
 * scan one page
+* delete one page
 
 My intent is to eventually have all pages stored in a git repo, and have a git post-update hook which calls the scan-one-page for that file.
-But that wouldn't cover the case of pages being deleted; not sure what to do about that one.
+But that wouldn't cover the case of pages being deleted; not sure what to do about that one. I'd have to check how to do that with git hooks.
+If the scan-everything pass is fast enough, it might be okay to call it on every post-update.
+
+* will need to add a command to install appropriate git-hooks instead of doing it by hand
+* may have to set up separate bare/web_src repos the way IkiWiki does it
+* whether one is using git or not, need to have a way of triggering a scan when a change is made (as distinct from scanning every time a page is rendered, that's wasteful)
 
 ## Process Phases With Hooks
 

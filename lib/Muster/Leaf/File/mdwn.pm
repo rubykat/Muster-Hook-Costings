@@ -52,7 +52,7 @@ sub build_meta {
         parent_page=>$self->parent_page,
         filename=>$self->filename,
         pagetype=>$self->pagetype,
-        ext=>$self->ext,
+        extension=>$self->extension,
         name=>$self->name,
         title=>$self->derive_title,
     };

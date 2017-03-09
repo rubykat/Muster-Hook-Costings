@@ -36,7 +36,7 @@ Set the defaults for the object if they are not defined already.
 sub init {
     my $self = shift;
 
-    $self->{primary_fields} = [qw(title name pagetype ext filename parent_page)];
+    $self->{primary_fields} = [qw(title name pagetype extension filename parent_page)];
     if (!defined $self->{metadb_db})
     {
         # give a default name
@@ -751,20 +751,11 @@ sub _add_page_data {
 	elsif (ref $val)
 	{
 	    $val = join("|", @{$val});
-	    $val =~ s/'/''/g; # sql-friendly quotes
-	    push @values, "'$val'";
+	    push @values, $val;
 	}
 	else
 	{
-	    $val =~ s/'/''/g; # sql-friendly quotes
-            if ($val =~ /^\d+$/)
-            {
-	        push @values, $val;
-            }
-            else
-            {
-	        push @values, "'$val'";
-            }
+	    push @values, $val;
 	}
     }
 
@@ -780,14 +771,19 @@ sub _add_page_data {
         $q = "UPDATE pages SET ";
         for (my $i=0; $i < @values; $i++)
         {
-            $q .= sprintf('%s = %s', $self->{primary_fields}->[$i], $values[$i]);
+            $q .= sprintf('%s = ?', $self->{primary_fields}->[$i]);
             if ($i + 1 < @values)
             {
                 $q .= ", ";
             }
         }
         $q .= " WHERE page = '$pagename';";
-        $ret = $dbh->do($q);
+        my $sth = $dbh->prepare($q);
+        if (!$sth)
+        {
+            croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+        }
+        $ret = $sth->execute(@values);
         if (!$ret)
         {
             croak __PACKAGE__ . " failed '$q' : $DBI::errstr";

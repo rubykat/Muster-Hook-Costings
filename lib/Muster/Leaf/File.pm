@@ -30,7 +30,7 @@ use Lingua::EN::Titlecase;
 has filename   => sub { croak 'no filename given' };
 has name       => sub { shift->build_name };
 has pagetype   => sub { shift->build_pagetype };
-has ext        => sub { shift->build_ext };
+has extension  => sub { shift->build_ext };
 has pagename   => sub { shift->build_pagename };
 
 =head2 reclassify
@@ -62,6 +62,7 @@ sub reclassify {
         {
             $subtype->import();
             $self->{pagetype} = 'NONE';
+            $self->{pagename} = $self->build_pagename_for_non_pages();
             return bless $self, $subtype;
         }
     }
@@ -85,6 +86,15 @@ sub build_pagename {
 
     # build from parent_page, infix slash and name
     return join '/' => grep {$_ ne ''} $self->parent_page, $self->name;
+}
+
+sub build_pagename_for_non_pages {
+    my $self = shift;
+
+    my $base = basename($self->filename);
+
+    # build from parent_page, infix slash and basename WITH ext
+    return join '/' => grep {$_ ne ''} $self->parent_page, $base;
 }
 
 sub build_pagetype {
@@ -130,6 +140,7 @@ sub build_meta {
         parent_page=>$self->parent_page,
         filename=>$self->filename,
         pagetype=>$self->pagetype,
+        extension=>$self->extension,
         name=>$self->name,
         title=>$self->derive_title,
     };
