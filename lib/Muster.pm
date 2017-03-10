@@ -82,7 +82,7 @@ sub startup {
     # -------------------------------------------
     # Pages
     # -------------------------------------------
-    $self->plugin('Muster::Plugin::PagesHelper');
+    $self->plugin('Muster::PagesHelper');
     
     $self->plugin('Foil');
     $self->plugin(NYTProf => $mojo_config);

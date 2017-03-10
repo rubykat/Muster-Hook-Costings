@@ -34,9 +34,8 @@ sub init {
     my $app = $self->command->app;
 
     $self->{page_dirs} = [];
-    foreach my $psp (@{$app->config->{page_sources}})
+    foreach my $pd (@{$app->config->{page_dirs}})
     {
-        my $pd = $psp->{pages_dir};
         my $pages_dir = File::Spec->rel2abs($pd);
         if (-d $pages_dir)
         {

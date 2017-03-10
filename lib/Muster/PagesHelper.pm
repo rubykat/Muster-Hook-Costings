@@ -1,13 +1,13 @@
-package Muster::Plugin::PagesHelper;
+package Muster::PagesHelper;
 
-#ABSTRACT: Muster::Plugin::PagesHelper - helping with pages
+#ABSTRACT: Muster::PagesHelper - helping with pages
 =head1 NAME
 
-Muster::Plugin::PagesHelper - helping with pages
+Muster::PagesHelper - helping with pages
 
 =head1 SYNOPSIS
 
-    use Muster::Plugin::PagesHelper;
+    use Muster::PagesHelper;
 
 =head1 DESCRIPTION
 
@@ -279,5 +279,5 @@ sub _pagelist {
     return $res->{results};
 } # _pagelist
 
-1; # End of Muster::Plugin::PagesHelper
+1; # End of Muster::PagesHelper
 __END__
