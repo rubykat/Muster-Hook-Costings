@@ -81,26 +81,18 @@ sub scan_one_page {
             if (-f -r $File::Find::name and $chopped_file eq $pagefile)
             {
                 warn "SCANNING: $File::Find::name\n";
-                my $parent_page = $File::Find::dir;
-                $parent_page =~ s!${page_dir}!!;
-                $parent_page =~ s!^/!!;
-
-                my $node = Muster::Leaf::File->new(
-                    filename    => $File::Find::name,
-                    parent_page => $parent_page,
+                my $leaf = $self->_create_a_leaf(
+                    page_dir=>$page_dir,
+                    filename=>$File::Find::name,
+                    dir=>$File::Find::dir,
                 );
-                $node = $node->reclassify();
-                if ($node)
+                if ($leaf)
                 {
-                    my $page = $node->pagename();
+                    my $page = $leaf->pagename();
                     if (!$found_page)
                     {
-                        $found_page = $node;
+                        $found_page = $leaf;
                     }
-                }
-                else
-                {
-                    croak "ERROR: node did not reclassify\n";
                 }
             }
         };
@@ -191,26 +183,18 @@ sub _find_and_scan_all {
             if (-f -r $File::Find::name and $File::Find::name !~ /(^\.|\/\.)/)
             {
                 warn "SCANNING: $File::Find::name\n";
-                my $parent_page = $File::Find::dir;
-                $parent_page =~ s!${page_dir}!!;
-                $parent_page =~ s!^/!!;
-
-                my $node = Muster::Leaf::File->new(
-                    filename    => $File::Find::name,
-                    parent_page => $parent_page,
+                my $leaf = $self->_create_a_leaf(
+                    page_dir=>$page_dir,
+                    filename=>$File::Find::name,
+                    dir=>$File::Find::dir,
                 );
-                $node = $node->reclassify();
-                if ($node)
+                if ($leaf)
                 {
-                    my $page = $node->pagename();
+                    my $page = $leaf->pagename();
                     if (!exists $all_pages{$page})
                     {
-                        $all_pages{$page} = $node->meta;
+                        $all_pages{$page} = $leaf->meta;
                     }
-                }
-                else
-                {
-                    croak "ERROR: node did not reclassify\n";
                 }
             }
         };
@@ -221,6 +205,38 @@ sub _find_and_scan_all {
 
     $self->{metadb}->update_all_pages(%all_pages);
 } # _find_and_scan_all
+
+=head2 _create_a_leaf
+
+Create a Leaf.
+    
+    $leaf = $self->_create_a_leaf(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
+
+=cut
+
+sub _create_a_leaf {
+    my $self = shift;
+    my %args = @_;
+
+    my $page_dir = $args{page_dir};
+    my $filename = $args{filename};
+    my $dir = $args{dir};
+
+    my $parent_page = $dir;
+    $parent_page =~ s!${page_dir}!!;
+    $parent_page =~ s!^/!!;
+
+    my $leaf = Muster::Leaf::File->new(
+        filename    => $filename,
+        parent_page => $parent_page,
+    );
+    $leaf = $leaf->reclassify();
+    if (!$leaf)
+    {
+        croak "ERROR: leaf did not reclassify\n";
+    }
+    return $leaf;
+} # _create_a_leaf
 
 1; # End of Muster::Scanner
 __END__

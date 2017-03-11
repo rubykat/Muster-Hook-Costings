@@ -55,6 +55,7 @@ sub serve_page {
     $self->init($c);
 
     my $pagename = $c->param('pagename') // 'index';
+    $pagename =~ s!/$!!; # remove trailing slash - this is a TEMPORARY fix
 
     my $info = $self->{metadb}->page_info($pagename);
     my $leaf = undef;

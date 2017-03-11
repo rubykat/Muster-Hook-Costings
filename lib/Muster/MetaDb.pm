@@ -171,19 +171,6 @@ sub total_pages {
     return $self->_total_pages(%args);
 } # total_pages
 
-=head2 what_error
-
-There was an error, what was it?
-
-=cut
-
-sub what_error {
-    my $self = shift;
-    my %args = @_;
-
-    return $self->{error};
-} # what_error
-
 =head1 Helper Functions
 
 These are functions which are NOT exported by this plugin.
@@ -219,8 +206,7 @@ sub _connect {
         my $dbh = DBI->connect("dbi:SQLite:dbname=$database", "", "");
         if (!$dbh)
         {
-            $self->{error} = "Can't connect to $database $DBI::errstr";
-            return 0;
+            croak "Can't connect to $database $DBI::errstr";
         }
         $dbh->{sqlite_unicode} = 1;
         $self->{dbh} = $dbh;
@@ -230,8 +216,7 @@ sub _connect {
     }
     else
     {
-	$self->{error} = "No Database given." . Dump($self);
-        return 0;
+	croak "No Database given." . Dump($self);
     }
 
     return 1;
@@ -273,6 +258,12 @@ sub _create_tables {
     {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
+    $q = "CREATE TABLE IF NOT EXISTS children (page, child, UNIQUE(page, child));";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
     $q = "CREATE TABLE IF NOT EXISTS deepfields (page, field, value, UNIQUE(page, field));";
     $ret = $dbh->do($q);
     if (!$ret)
@@ -283,23 +274,26 @@ sub _create_tables {
     return 1;
 } # _create_tables
 
-=head2 _generate_flatfields_table
+=head2 _generate_derived_tables
 
 Create and populate the flatfields table using the data from the deepfields table.
 Expects the deepfields table to be up to date, so this needs to be called
 at the end of the scanning pass.
 
-    $self->_generate_flatfields_table();
+    $self->_generate_derived_tables();
 
 =cut
 
-sub _generate_flatfields_table {
+sub _generate_derived_tables {
     my $self = shift;
 
     return unless $self->{dbh};
 
     my $dbh = $self->{dbh};
 
+    # ---------------------------------------------------
+    # TABLE: flatfields
+    # ---------------------------------------------------
     my @fieldnames = $self->_get_all_fieldnames();
 
     my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
@@ -320,9 +314,7 @@ sub _generate_flatfields_table {
         croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
     }
 
-    # ---------------------------------------------------
     # Insert values for all the pages
-    # ---------------------------------------------------
     my $transaction_on = 0;
     my $num_trans = 0;
     my @pagenames = $self->_get_all_pagenames();
@@ -376,8 +368,52 @@ sub _generate_flatfields_table {
     } # for each page
     $self->_commit();
 
+    # ---------------------------------------------------
+    # TABLE: children
+    # ---------------------------------------------------
+    $iq = "INSERT OR IGNORE INTO children(page, child) VALUES(?, ?);";
+    $isth = $dbh->prepare($iq);
+    if (!$isth)
+    {
+        croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
+    }
+
+    $transaction_on = 0;
+    $num_trans = 0;
+    foreach my $page (@pagenames)
+    {
+        if (!$transaction_on)
+        {
+            my $ret = $dbh->do("BEGIN TRANSACTION;");
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
+            }
+            $transaction_on = 1;
+            $num_trans = 0;
+        }
+        my $children = $self->_get_children_for_page($page);
+        foreach my $child (@{$children})
+        {
+            $ret = $isth->execute($page, $child);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$iq' ($page, $child)";
+            }
+        }
+        # do the commits in bursts
+        $num_trans++;
+        if ($transaction_on and $num_trans > 100)
+        {
+            $self->_commit();
+            $transaction_on = 0;
+            $num_trans = 0;
+        }
+    }
+    $self->_commit();
+
     return 1;
-} # _generate_flatfields_table
+} # _generate_derived_tables
 
 =head2 _drop_tables
 
@@ -393,35 +429,14 @@ sub _drop_tables {
 
     my $dbh = $self->{dbh};
 
-    my $q = "DROP TABLE IF EXISTS pagefiles;";
-    my $ret = $dbh->do($q);
-    if (!$ret)
+    foreach my $table (qw(pagefiles links attachments children deepfields flatfields))
     {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "DROP TABLE IF EXISTS links;";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "DROP TABLE IF EXISTS attachments;";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "DROP TABLE IF EXISTS deepfields;";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "DROP TABLE IF EXISTS flatfields;";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+        my $q = "DROP TABLE IF EXISTS $table;";
+        my $ret = $dbh->do($q);
+        if (!$ret)
+        {
+            croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+        }
     }
 
     return 1;
@@ -473,7 +488,7 @@ sub _update_all_entries {
         }
     }
     $self->_commit();
-    $self->_generate_flatfields_table();
+    $self->_generate_derived_tables();
 
 } # _update_all_entries
 
@@ -516,14 +531,12 @@ sub _get_all_pagefiles {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute();
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my @pagenames = ();
     my @row;
@@ -553,14 +566,12 @@ sub _get_all_pagenames {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute();
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my @pagenames = ();
     my @row;
@@ -589,14 +600,12 @@ sub _get_all_fieldnames {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute();
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my @fieldnames = ();
     my @row;
@@ -627,14 +636,12 @@ sub _get_fields_for_page {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute($pagename);
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my %meta = ();
     my @row;
@@ -647,6 +654,78 @@ sub _get_fields_for_page {
 
     return \%meta;
 } # _get_fields_for_page
+
+=head2 _get_siblings_for_page
+
+Get the "sibling" pages for this page from the "children" table.
+
+    $meta = $self->_get_siblings_for_page($page);
+
+=cut
+
+sub _get_siblings_for_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = "SELECT child FROM children WHERE child != ? AND page IN (SELECT parent_page FROM pagefiles WHERE page = ?);";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($pagename, $pagename);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @siblings = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @siblings, $row[0];
+    }
+
+    return \@siblings;
+} # _get_siblings_for_page
+
+=head2 _get_children_for_page
+
+Get the "child" pages for this page from the pagefiles table.
+
+    $meta = $self->_get_children_for_page($page);
+
+=cut
+
+sub _get_children_for_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype != "NonPage";';
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($pagename);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @children = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @children, $row[0];
+    }
+
+    return \@children;
+} # _get_children_for_page
 
 =head2 _get_page_meta
 
@@ -668,14 +747,12 @@ sub _get_page_meta {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute($pagename);
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     # return the first matching row because there should be only one row
     my $meta;
@@ -705,14 +782,12 @@ sub _page_exists {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute($page);
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my $total = 0;
     my @row;
@@ -741,14 +816,12 @@ sub _total_pagefiles {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute();
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my $total = 0;
     my @row;
@@ -777,14 +850,12 @@ sub _total_pages {
     my $sth = $dbh->prepare($q);
     if (!$sth)
     {
-        $self->{error} = "FAILED to prepare '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to prepare '$q' $DBI::errstr";
     }
     my $ret = $sth->execute();
     if (!$ret)
     {
-        $self->{error} = "FAILED to execute '$q' $DBI::errstr";
-        return undef;
+        croak "FAILED to execute '$q' $DBI::errstr";
     }
     my $total = 0;
     my @row;
@@ -896,8 +967,13 @@ sub _add_page_data {
         foreach my $link (@links)
         {
             # the "OR IGNORE" allows duplicates to be silently discarded
-            $q = "INSERT OR IGNORE INTO links(page, links_to) VALUES('$pagename', '$link');";
-            $ret = $dbh->do($q);
+            $q = "INSERT OR IGNORE INTO links(page, links_to) VALUES(?, ?);";
+            my $sth = $dbh->prepare($q);
+            if (!$sth)
+            {
+                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+            }
+            $ret = $sth->execute($pagename, $link);
             if (!$ret)
             {
                 croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
@@ -921,8 +997,43 @@ sub _add_page_data {
         foreach my $att (@attachments)
         {
             # the "OR IGNORE" allows duplicates to be silently discarded
-            $q = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES('$pagename', '$att');";
-            $ret = $dbh->do($q);
+            $q = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES(?, ?);";
+            my $sth = $dbh->prepare($q);
+            if (!$sth)
+            {
+                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+            }
+            $ret = $sth->execute($pagename, $att);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            }
+        }
+    }
+    # ------------------------------------------------
+    # TABLE: children
+    # ------------------------------------------------
+    if (exists $meta{children} and defined $meta{children})
+    {
+        my @children = ();
+        if (ref $meta{children})
+        {
+            @children = @{$meta{children}};
+        }
+        else # one scalar child
+        {
+            push @children, $meta{children};
+        }
+        foreach my $child (@children)
+        {
+            # the "OR IGNORE" allows duplicates to be silently discarded
+            $q = "INSERT OR IGNORE INTO children(page, child) VALUES(?, ?);";
+            my $sth = $dbh->prepare($q);
+            if (!$sth)
+            {
+                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+            }
+            $ret = $sth->execute($pagename, $child);
             if (!$ret)
             {
                 croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
@@ -932,22 +1043,29 @@ sub _add_page_data {
     # ------------------------------------------------
     # TABLE: deepfields
     #
-    # This is for ALL the meta-data about a page
+    # This is for all the meta-data about a page
+    # apart from multi-valued things like links
     # Only add in real pages, not non-pages
     # ------------------------------------------------
     if ($meta{pagetype} ne 'NonPage')
     {
         foreach my $field (sort keys %meta)
         {
-            my $value = $meta{$field};
-
-            next unless defined $value;
-
-            $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
-            $ret = $dbh->do($q);
-            if (!$ret)
+            if ($field ne 'attachments'
+                    and $field ne 'links'
+                    and $field ne 'children'
+                    and $field ne 'siblings')
             {
-                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+                my $value = $meta{$field};
+
+                next unless defined $value;
+
+                $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
+                $ret = $dbh->do($q);
+                if (!$ret)
+                {
+                    croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+                }
             }
         }
     }
@@ -961,7 +1079,7 @@ sub _delete_page_from_db {
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pagefiles links attachments deepfields flatfields))
+    foreach my $table (qw(pagefiles links attachments children deepfields flatfields))
     {
         my $q = "DELETE FROM $table WHERE page = ?;";
         my $sth = $dbh->prepare($q);
