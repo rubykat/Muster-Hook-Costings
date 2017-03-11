@@ -1059,9 +1059,18 @@ sub _add_page_data {
                 my $value = $meta{$field};
 
                 next unless defined $value;
+                if (ref $value)
+                {
+                    $value = join("|", @{$value});
+                }
 
-                $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES('$pagename', '$field', '$value');";
-                $ret = $dbh->do($q);
+                $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";
+                my $sth = $dbh->prepare($q);
+                if (!$sth)
+                {
+                    croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+                }
+                $ret = $sth->execute($pagename, $field, $value);
                 if (!$ret)
                 {
                     croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
