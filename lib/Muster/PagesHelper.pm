@@ -36,20 +36,6 @@ sub register {
 
     $self->_init($app,$conf);
 
-    $app->helper( 'muster_serve_page' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_serve_page($c);
-    } );
-
-    $app->helper( 'muster_serve_meta' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_serve_meta($c);
-    } );
-
     $app->helper( 'muster_total_pages' => sub {
         my $c        = shift;
         my %args = @_;
@@ -69,19 +55,6 @@ sub register {
         my %args = @_;
 
         return $self->_pagelist($c,%args);
-    } );
-
-    $app->helper( 'muster_set_options' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_set_options($c,%args);
-    } );
-    $app->helper( 'muster_settings' => sub {
-        my $c        = shift;
-        my %args = @_;
-
-        return $self->_settings($c,%args);
     } );
 }
 
@@ -133,7 +106,7 @@ sub _serve_page {
         return;
     }
 
-    if ($leaf->pagetype eq 'NONE')
+    if ($leaf->pagetype eq 'NonPage')
     {
         $self->_serve_file($c, $leaf->filename);
     }

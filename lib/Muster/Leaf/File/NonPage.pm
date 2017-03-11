@@ -1,9 +1,9 @@
-package Muster::Leaf::File::NONE;
+package Muster::Leaf::File::NonPage;
 
-#ABSTRACT: Muster::Leaf::File::NONE - an unknown file
+#ABSTRACT: Muster::Leaf::File::NonPage - an unknown file
 =head1 NAME
 
-Muster::Leaf::File::NONE - an unknown file
+Muster::Leaf::File::NonPage - an unknown file
 
 =head1 SYNOPSIS
 

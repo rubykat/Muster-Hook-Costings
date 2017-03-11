@@ -548,7 +548,7 @@ sub _get_all_pagenames {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT page FROM pagefiles WHERE pagetype != 'NONE' ORDER BY page;";
+    my $q = "SELECT page FROM pagefiles WHERE pagetype != 'NonPage' ORDER BY page;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -772,7 +772,7 @@ sub _total_pages {
 
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != 'NONE';";
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != 'NonPage';";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -935,7 +935,7 @@ sub _add_page_data {
     # This is for ALL the meta-data about a page
     # Only add in real pages, not non-pages
     # ------------------------------------------------
-    if ($meta{pagetype} ne 'NONE')
+    if ($meta{pagetype} ne 'NonPage')
     {
         foreach my $field (sort keys %meta)
         {

@@ -56,12 +56,12 @@ sub reclassify {
     }
     else
     {
-        $subtype = __PACKAGE__ . "::NONE";
+        $subtype = __PACKAGE__ . "::NonPage";
         $has_subtype = eval "require $subtype;";
         if ($has_subtype)
         {
             $subtype->import();
-            $self->{pagetype} = 'NONE';
+            $self->{pagetype} = 'NonPage';
             $self->{pagename} = $self->build_pagename_for_non_pages();
             return bless $self, $subtype;
         }

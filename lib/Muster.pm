@@ -19,6 +19,7 @@ Mojolicious::Plugin::Foil
 =cut
 
 use Mojo::Base 'Mojolicious';
+use Muster::Assemble;
 use Path::Tiny;
 use File::ShareDir;
 
@@ -104,19 +105,37 @@ sub startup {
     }
 
     # -------------------------------------------
+    # Rendering
+    # -------------------------------------------
+    $self->{assemble} = Muster::Assemble->new();
 
-    # -------------------------------------------
-    # Router
-    # -------------------------------------------
+    my $do_pagelist = sub {
+        my $c  = shift;
+        $c->render(template=>'pagelist');
+    };
+    my $do_page = sub {
+        my $c  = shift;
+        $self->{assemble}->serve_page($c);
+    };
+    my $do_meta = sub {
+        my $c  = shift;
+        $self->{assemble}->serve_meta($c);
+    };
+    my $do_debug = sub {
+        my $c  = shift;
+
+        my $pagename = $c->param('pagename');
+        $c->reply->exception("Debug" . (defined $pagename ? " $pagename" : ''));
+    };
     my $r = $self->routes;
 
-    $r->get('/')->to('pages#page');
-    $r->get('/pagelist')->to('pages#pagelist');
-    $r->get('/debug')->to('pages#debug');
-    $r->get('/debug/*pagename')->to('pages#debug');
-    $r->get('/meta/*pagename')->to('pages#meta');
+    $r->get('/' => $do_page);
+    $r->get('/pagelist' => $do_pagelist);
+    $r->get('/debug' => $do_debug);
+    $r->get('/debug/*pagename' => $do_debug);
+    $r->get('/meta/*pagename' => $do_meta);
     # anything else should be a page
-    $r->get('/*pagename')->to('pages#page');
+    $r->get('/*pagename' => $do_page);
 }
 
 1; # end of Muster
