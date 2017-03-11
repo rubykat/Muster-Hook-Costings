@@ -193,7 +193,7 @@ sub get_content_part {
 sub build_html {
     my $self = shift;
 
-    my $content = $self->get_content_part();
+    my $content = $self->cooked();
     return markdown($content);
 }
 

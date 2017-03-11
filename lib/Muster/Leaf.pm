@@ -34,10 +34,27 @@ sub raw {
     return $self->{raw};
 }
 
+# The "cooked" (processed) content.
+# Since this needs to be able to be changed,
+# don't use the Mojo mechanism
+sub cooked {
+    my $self = shift;
+    my $new_content = shift;
+    if (defined $new_content)
+    {
+        $self->{cooked} = $new_content;
+    }
+    elsif (!exists $self->{cooked})
+    {
+        $self->{cooked} = $self->raw;
+    }
+    return $self->{cooked};
+}
+
 # Since this needs to be able to be cleared,
 # don't use the Mojo mechanism
 # Especially don't let the html be set,
-# because it needs to be built from the raw source
+# because it needs to be built from the cooked source
 sub html {
     my $self = shift;
     if (!exists $self->{html})
@@ -91,16 +108,6 @@ sub build_title {
     return $self->meta->{title} if exists $self->{meta} and exists $self->meta->{title};
     return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
     return $self->name;
-}
-
-sub find {
-    my ($self, @names) = @_;
-
-    # return itself, that's the only thing it can find
-    return $self unless @names;
-
-    # not found
-    return;
 }
 
 1;

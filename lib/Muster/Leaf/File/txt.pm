@@ -29,7 +29,7 @@ use YAML::Any;
 sub build_html {
     my $self = shift;
 
-    my $content = $self->raw();
+    my $content = $self->cooked();
     return <<EOT;
 <pre>
 $content

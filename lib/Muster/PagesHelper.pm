@@ -11,7 +11,7 @@ Muster::PagesHelper - helping with pages
 
 =head1 DESCRIPTION
 
-Content management system; finding and showing pages.
+Content management system; getting and showing pages.
 
 =cut
 
