@@ -16,9 +16,11 @@ use Mojo::Base -base;
 use Carp;
 use Muster::MetaDb;
 use Muster::Leaf::File;
+use Muster::Hook;
 use File::Spec;
 use File::Find;
 use YAML::Any;
+use Module::Pluggable search_path => ['Muster::Hook'], require => 1;
 
 has command => sub { croak "command is not defined" };
 
@@ -49,6 +51,29 @@ sub init {
 
     $self->{metadb} = Muster::MetaDb->new(%{$app->config});
     $self->{metadb}->init();
+
+    # Hooks are defined by Muster::Scanner::Hook objects
+    # The Pluggable module will find all possible hooks
+    # but the config will have defined a subset
+    # in the order we want to apply them.
+    $self->{hooks} = [];
+    my %phooks = ();
+    foreach my $ph ($self->plugins())
+    {
+        $phooks{$ph} = $ph->new(scanner=>$self);
+        $ph->init();
+    }
+    foreach my $hookmod (@{$app->config->{scanner}->{hooks}})
+    {
+        if ($phooks{$hookmod})
+        {
+            push @{$self->{hooks}}, $phooks{$hookmod};
+        }
+        else
+        {
+            warn "Scanner hook '$hookmod' does not exist";
+        }
+    }
 
     return $self;
 } # init
@@ -81,7 +106,7 @@ sub scan_one_page {
             if (-f -r $File::Find::name and $chopped_file eq $pagefile)
             {
                 warn "SCANNING: $File::Find::name\n";
-                my $leaf = $self->_create_a_leaf(
+                my $leaf = $self->_create_and_scan_leaf(
                     page_dir=>$page_dir,
                     filename=>$File::Find::name,
                     dir=>$File::Find::dir,
@@ -183,7 +208,7 @@ sub _find_and_scan_all {
             if (-f -r $File::Find::name and $File::Find::name !~ /(^\.|\/\.)/)
             {
                 warn "SCANNING: $File::Find::name\n";
-                my $leaf = $self->_create_a_leaf(
+                my $leaf = $self->_create_and_scan_leaf(
                     page_dir=>$page_dir,
                     filename=>$File::Find::name,
                     dir=>$File::Find::dir,
@@ -206,15 +231,15 @@ sub _find_and_scan_all {
     $self->{metadb}->update_all_pages(%all_pages);
 } # _find_and_scan_all
 
-=head2 _create_a_leaf
+=head2 _create_and_scan_leaf
 
-Create a Leaf.
+Create and scan a Leaf.
     
-    $leaf = $self->_create_a_leaf(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
+    $leaf = $self->_create_and_scan_leaf(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
 
 =cut
 
-sub _create_a_leaf {
+sub _create_and_scan_leaf {
     my $self = shift;
     my %args = @_;
 
@@ -222,6 +247,9 @@ sub _create_a_leaf {
     my $filename = $args{filename};
     my $dir = $args{dir};
 
+    # -------------------------------------------
+    # Create
+    # -------------------------------------------
     my $parent_page = $dir;
     $parent_page =~ s!${page_dir}!!;
     $parent_page =~ s!^/!!; # remove the leading /
@@ -235,8 +263,17 @@ sub _create_a_leaf {
     {
         croak "ERROR: leaf did not reclassify\n";
     }
+
+    # -------------------------------------------
+    # Scan
+    # -------------------------------------------
+    foreach my $hook (@{$self->{hooks}})
+    {
+        $leaf = $hook->scan($leaf);
+    }
+
     return $leaf;
-} # _create_a_leaf
+} # _create_and_scan_leaf
 
 1; # End of Muster::Scanner
 __END__
