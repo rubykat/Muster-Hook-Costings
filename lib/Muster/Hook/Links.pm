@@ -59,6 +59,9 @@ sub init {
 =head2 scan
 
 Scans a leaf object, updating it with meta-data.
+It may also update the "cooked" attribute of the leaf object, in order to
+prevent earlier-scanned things being re-scanned by something else later in the
+scanning pass.
 May leave the leaf untouched.
 
   my $new_leaf = $self->scan($leaf);
@@ -73,7 +76,7 @@ sub scan {
         return $leaf;
     }
  
-    my $content = $leaf->raw();
+    my $content = $leaf->cooked();
     my $page = $leaf->pagename();
     # fudge the content by replacing {{$page}} with the pagename
     $content =~ s!\{\{\$page\}\}!$page!g;
