@@ -124,7 +124,7 @@ sub startup {
     my $do_debug = sub {
         my $c  = shift;
 
-        my $pagename = $c->param('pagename');
+        my $pagename = $c->param('cpath');
         $c->reply->exception("Debug" . (defined $pagename ? " $pagename" : ''));
     };
     my $r = $self->routes;
@@ -132,10 +132,10 @@ sub startup {
     $r->get('/' => $do_page);
     $r->get('/pagelist' => $do_pagelist);
     $r->get('/debug' => $do_debug);
-    $r->get('/debug/*pagename' => $do_debug);
-    $r->get('/meta/*pagename' => $do_meta);
-    # anything else should be a page
-    $r->get('/*pagename' => $do_page);
+    $r->get('/debug/*cpath' => $do_debug);
+    $r->get('/meta/*cpath' => $do_meta);
+    # anything else should be a page or file
+    $r->get('/*cpath' => $do_page);
 }
 
 1; # end of Muster

@@ -44,7 +44,7 @@ sub init {
 
 =head2 serve_page
 
-Serve one page.
+Serve one page (or a file)
 
 =cut
 sub serve_page {
@@ -54,45 +54,48 @@ sub serve_page {
 
     $self->init($c);
 
-    my $pagename = $c->param('pagename') // 'index';
-    $pagename =~ s!/$!!; # remove trailing slash - this is a TEMPORARY fix
+    # If this is a page, there ought to be a trailing slash in the cpath.
+    # If there isn't, either this isn't canonical, or it isn't a page.
+    # However, pagenames don't have a trailing slash.
+    # Yes, this is confusing.
+    my $pagename = $c->param('cpath') // 'index';
+    my $has_trailing_slash = 0;
+    if ($pagename =~ m!/$!)
+    {
+        $has_trailing_slash = 1;
+        $pagename =~ s!/$!!;
+    }
+
+    # now we need to find if this page exists, and what type it is
     my $info = $self->{metadb}->page_or_file_info($pagename);
-    unless (defined $info)
+    unless (defined $info and defined $info->{filename} and -f -r $info->{filename})
     {
         $c->reply->not_found;
         return;
     }
-    my $leaf = undef;
-    if (-f $info->{filename})
+    if (!$info->{pagetype}) # a non-page
     {
-        $leaf = Muster::Leaf::File->new(%{$info});
-        $leaf = $leaf->reclassify();
+        return $self->_serve_file($c, $info->{filename});
+    }
+    elsif (!$has_trailing_slash and $pagename ne 'index') # non-canonical
+    {
+        return $c->redirect_to("/${pagename}/");
     }
 
-    unless (defined $leaf)
+    my $leaf = Muster::Leaf::File->new(%{$info});
+    $leaf = $leaf->reclassify();
+
+    my $html = $leaf->html();
+    unless (defined $html)
     {
         $c->reply->not_found;
         return;
     }
 
-    if (!$leaf->pagetype)
-    {
-        $self->_serve_file($c, $leaf->filename);
-    }
-    else
-    {
-        my $html = $leaf->html();
-        unless (defined $html)
-        {
-            $c->reply->not_found;
-            return;
-        }
-
-        $c->stash('pagename' => $pagename);
-        $c->stash('content' => $html);
-        $c->render(template => 'page');
-    }
-}
+    $c->stash('pagename' => $pagename);
+    $c->stash('content' => $html);
+    $c->render(template => 'page');
+} # serve_page
 
 =head2 serve_meta
 
@@ -106,7 +109,8 @@ sub serve_meta {
 
     $self->init($c);
 
-    my $pagename = $c->param('pagename') // 'index';
+    my $pagename = $c->param('cpath') // 'index';
+    $pagename =~ s!/$!!; # remove trailing slash
 
     my $info = $self->{metadb}->page_or_file_info($pagename);
     unless (defined $info)

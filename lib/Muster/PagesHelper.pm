@@ -117,7 +117,7 @@ sub _make_page_attachments_list {
     my $self  = shift;
     my $c  = shift;
 
-    my $pagename = $c->param('pagename');
+    my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
 
     my $info = $self->{metadb}->page_or_file_info($pagename);
@@ -153,7 +153,7 @@ sub _make_page_related_list {
     my $self  = shift;
     my $c  = shift;
 
-    my $pagename = $c->param('pagename');
+    my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
 
     # for this, add a leading and trailing slash to every page
