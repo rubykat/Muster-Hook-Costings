@@ -26,6 +26,7 @@ use YAML::Any;
 use File::Slurper 'read_binary';
 use POSIX qw(ceil);
 use Mojo::URL;
+use HTML::LinkList;
 
 =head1 REGISTER
 
@@ -79,114 +80,6 @@ sub _init {
     return $self;
 } # _init
 
-=head2 _serve_page
-
-Serve a single page.
-
-=cut
-
-sub _serve_page {
-    my $self = shift;
-    my $c = shift;
-    my $app = $c->app;
-
-    my $pagename = $c->param('pagename') // 'index';
-
-    my $info = $self->{metadb}->page_info($pagename);
-    my $leaf = undef;
-    if (-f $info->{filename})
-    {
-        $leaf = Muster::Leaf::File->new(%{$info});
-        $leaf = $leaf->reclassify();
-    }
-
-    unless (defined $leaf)
-    {
-        $c->reply->not_found;
-        return;
-    }
-
-    if ($leaf->pagetype eq 'NonPage')
-    {
-        $self->_serve_file($c, $leaf->filename);
-    }
-    else
-    {
-        my $html = $leaf->html();
-        unless (defined $html)
-        {
-            $c->reply->not_found;
-            return;
-        }
-
-        $c->stash('pagename' => $pagename);
-        $c->stash('content' => $html);
-        $c->render(template => 'page');
-    }
-
-    # cache this page or not?
-    #$leaf->decache unless $app->config->{'cached'};
-} # _serve_page
-
-=head2 _serve_file
-
-Serve a file rather than a page.
-    
-    $self->_serve_file($filename);
-
-=cut
-
-sub _serve_file {
-    my $self = shift;
-    my $c = shift;
-    my $filename = shift;
-
-    if (!-f $filename)
-    {
-        # not found
-        return;
-    }
-    # extenstion is format (exclude the dot)
-    my $ext = '';
-    if ($filename =~ /\.(\w+)$/)
-    {
-        $ext = $1;
-    }
-    # read the image
-    my $bytes = read_binary($filename);
-
-    # now display the logo
-    $c->render(data => $bytes, format => $ext);
-} # _serve_file
-
-=head2 _serve_meta
-
-Serve a single page's meta-data.
-
-=cut
-
-sub _serve_meta {
-    my $self = shift;
-    my $c = shift;
-    my $app = $c->app;
-
-    my $pagename = $c->param('pagename') // 'index';
-
-    my $info = $self->{metadb}->page_info($pagename);
-    unless (defined $info)
-    {
-        $c->reply->not_found;
-        return;
-    }
-
-    my $html = "<pre>\n" . Dump($info) . "\n</pre>\n";
-
-    $c->stash('pagename' => $pagename);
-    $c->stash('content' => $html);
-    $c->render(template => 'page');
-
-} # _serve_meta
-
 =head2 _total_pages
 
 Return the total number of records in this db
@@ -218,12 +111,13 @@ sub _make_page_related_list {
     my $c  = shift;
 
     my $pagename = $c->param('pagename');
-    my @out = ();
-    push @out, "<div class='pagelist'><ul>";
-    push @out, "<li>$pagename</li>";
-    push @out, "</ul></div>";
-    my $out = join("\n", @out);
-    return $out;
+    my $location = $c->url_for($pagename);
+    my @pagenames = $self->{metadb}->pagelist();
+    my $link_list = HTML::LinkList::nav_tree(
+        current_url=>$location,
+        paths=>\@pagenames,
+    );
+    return $link_list;
 } # _make_page_related_list
 
 =head2 _pagelist
@@ -236,20 +130,14 @@ sub _pagelist {
     my $self  = shift;
     my $c  = shift;
 
-    my $pagename = $c->param('pagename') // '';
-    my $opt_url = $c->url_for("/opt");
-    my $location = $c->url_for($pagename);
-    my $res = $self->{metadb}->pagelist(location=>$location,
-        opt_url=>$opt_url,
-        pagename=>$pagename,
-        n=>0,
+    my $location = $c->url_for('pagelist');
+    my @pagenames = $self->{metadb}->pagelist();
+
+    my $link_list = HTML::LinkList::full_tree(
+        current_url=>$location,
+        paths=>\@pagenames,
     );
-    if (!defined $res)
-    {
-        $c->render(template => 'apperror');
-        return undef;
-    }
-    return $res->{results};
+    return $link_list;
 } # _pagelist
 
 1; # End of Muster::PagesHelper

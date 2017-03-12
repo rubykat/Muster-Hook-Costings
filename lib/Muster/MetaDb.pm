@@ -411,6 +411,50 @@ sub _generate_derived_tables {
         }
     }
     $self->_commit();
+ 
+    # ---------------------------------------------------
+    # TABLE: attachments -- these are like children, but NonPages
+    # ---------------------------------------------------
+    $iq = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES(?, ?);";
+    $isth = $dbh->prepare($iq);
+    if (!$isth)
+    {
+        croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
+    }
+
+    $transaction_on = 0;
+    $num_trans = 0;
+    foreach my $page (@pagenames)
+    {
+        if (!$transaction_on)
+        {
+            my $ret = $dbh->do("BEGIN TRANSACTION;");
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
+            }
+            $transaction_on = 1;
+            $num_trans = 0;
+        }
+        my $attachments = $self->_get_attachments_for_page($page);
+        foreach my $att (@{$attachments})
+        {
+            $ret = $isth->execute($page, $att);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$iq' ($page, $att)";
+            }
+        }
+        # do the commits in bursts
+        $num_trans++;
+        if ($transaction_on and $num_trans > 100)
+        {
+            $self->_commit();
+            $transaction_on = 0;
+            $num_trans = 0;
+        }
+    }
+    $self->_commit();
 
     return 1;
 } # _generate_derived_tables
@@ -727,6 +771,42 @@ sub _get_children_for_page {
     return \@children;
 } # _get_children_for_page
 
+=head2 _get_attachments_for_page
+
+Get the "attachments" non-pages for this page from the pagefiles table.
+
+    $meta = $self->_get_attachments_for_page($page);
+
+=cut
+
+sub _get_attachments_for_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype = "NonPage";';
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($pagename);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @attachments = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @attachments, $row[0];
+    }
+
+    return \@attachments;
+} # _get_attachments_for_page
+
 =head2 _get_page_meta
 
 Get the meta-data for a single page from the flatfields table.
@@ -974,66 +1054,6 @@ sub _add_page_data {
                 croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
             }
             $ret = $sth->execute($pagename, $link);
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-            }
-        }
-    }
-    # ------------------------------------------------
-    # TABLE: attachments
-    # ------------------------------------------------
-    if (exists $meta{attachments} and defined $meta{attachments})
-    {
-        my @attachments = ();
-        if (ref $meta{attachments})
-        {
-            @attachments = @{$meta{attachments}};
-        }
-        else # one scalar attachment
-        {
-            push @attachments, $meta{attachments};
-        }
-        foreach my $att (@attachments)
-        {
-            # the "OR IGNORE" allows duplicates to be silently discarded
-            $q = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES(?, ?);";
-            my $sth = $dbh->prepare($q);
-            if (!$sth)
-            {
-                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
-            }
-            $ret = $sth->execute($pagename, $att);
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-            }
-        }
-    }
-    # ------------------------------------------------
-    # TABLE: children
-    # ------------------------------------------------
-    if (exists $meta{children} and defined $meta{children})
-    {
-        my @children = ();
-        if (ref $meta{children})
-        {
-            @children = @{$meta{children}};
-        }
-        else # one scalar child
-        {
-            push @children, $meta{children};
-        }
-        foreach my $child (@children)
-        {
-            # the "OR IGNORE" allows duplicates to be silently discarded
-            $q = "INSERT OR IGNORE INTO children(page, child) VALUES(?, ?);";
-            my $sth = $dbh->prepare($q);
-            if (!$sth)
-            {
-                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
-            }
-            $ret = $sth->execute($pagename, $child);
             if (!$ret)
             {
                 croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
