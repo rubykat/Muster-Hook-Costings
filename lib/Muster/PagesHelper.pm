@@ -24,6 +24,7 @@ use DBI;
 use Text::NeatTemplate;
 use YAML::Any;
 use File::Slurper 'read_binary';
+use File::Basename 'basename';
 use POSIX qw(ceil);
 use Mojo::URL;
 use HTML::LinkList;
@@ -49,6 +50,12 @@ sub register {
         my %args = @_;
 
         return $self->_make_page_related_list($c,%args);
+    } );
+    $app->helper( 'muster_page_attachments_list' => sub {
+        my $c        = shift;
+        my %args = @_;
+
+        return $self->_make_page_attachments_list($c,%args);
     } );
 
     $app->helper( 'muster_pagelist' => sub {
@@ -100,6 +107,42 @@ sub _total_pages {
     return $total;
 } # _total_pages
 
+=head2 _make_page_attachments_list
+
+Make a list of related pages to this page.
+
+=cut
+
+sub _make_page_attachments_list {
+    my $self  = shift;
+    my $c  = shift;
+
+    my $pagename = $c->param('pagename');
+    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    my $att_list = '';
+    if ($info and $info->{attachments})
+    {
+        my @att = ();
+        my %labels = ();
+        # just link to the basenames, since this should be relative
+        foreach my $att (@{$info->{attachments}})
+        {
+            my $bn = basename($att);
+            push @att, $bn;
+            $labels{$bn} = $bn;
+        }
+        $att_list = HTML::LinkList::link_list(
+            urls=>\@att,
+            labels=>\%labels,
+        );
+        $att_list = "<div><p><b>Attachments:</b></p>$att_list</div>" if $att_list;
+    }
+    
+    return $att_list;
+} # _make_page_attachments_list
+
 =head2 _make_page_related_list
 
 Make a list of related pages to this page.
@@ -111,12 +154,16 @@ sub _make_page_related_list {
     my $c  = shift;
 
     my $pagename = $c->param('pagename');
-    my $location = $c->url_for($pagename);
-    my @pagenames = $self->{metadb}->pagelist();
+    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+
+    # for this, add a leading and trailing slash to every page
+    my @pagenames = map { '/' . $_ . '/' } $self->{metadb}->pagelist();
+
     my $link_list = HTML::LinkList::nav_tree(
-        current_url=>$location,
+        current_url=>"/$pagename/",
         paths=>\@pagenames,
     );
+
     return $link_list;
 } # _make_page_related_list
 
@@ -131,7 +178,8 @@ sub _pagelist {
     my $c  = shift;
 
     my $location = $c->url_for('pagelist');
-    my @pagenames = $self->{metadb}->pagelist();
+    # for this, add a leading and trailing slash to every page
+    my @pagenames = map { '/' . $_ . '/' } $self->{metadb}->pagelist();
 
     my $link_list = HTML::LinkList::full_tree(
         current_url=>$location,

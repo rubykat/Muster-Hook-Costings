@@ -28,8 +28,8 @@ use YAML::Any;
 use Lingua::EN::Titlecase;
 
 has filename   => sub { croak 'no filename given' };
-has name       => sub { shift->build_name };
 has pagetype   => sub { shift->build_pagetype };
+has name       => sub { shift->build_name };
 has extension  => sub { shift->build_ext };
 has pagename   => sub { shift->build_pagename };
 
@@ -37,7 +37,7 @@ has pagename   => sub { shift->build_pagename };
 
 Reclassify this object as a Muster::Leaf::File subtype.
 If a subtype exists, cast to that subtype and return the object;
-if not, return undef.
+if not, return self.
 To simplify things, pagetypes are determined by the file extension,
 and the object name will be Muster::Leaf::File::$pagetype
 
@@ -47,26 +47,14 @@ sub reclassify {
     my $self = shift;
 
     my $pagetype = $self->pagetype;
-    my $subtype = __PACKAGE__ . "::" . $pagetype;
-    my $has_subtype = eval "require $subtype;"; # needs to be quoted because $subtype is a variable
-    if ($has_subtype)
+    if ($pagetype)
     {
+        my $subtype = __PACKAGE__ . "::" . $pagetype;
+        eval "require $subtype;"; # needs to be quoted because $subtype is a variable
         $subtype->import();
         return bless $self, $subtype;
     }
-    else
-    {
-        $subtype = __PACKAGE__ . "::NonPage";
-        $has_subtype = eval "require $subtype;";
-        if ($has_subtype)
-        {
-            $subtype->import();
-            $self->{pagetype} = 'NonPage';
-            $self->{pagename} = $self->build_pagename_for_non_pages();
-            return bless $self, $subtype;
-        }
-    }
-    return undef;
+    return $self;
 }
 
 sub build_name {
@@ -75,8 +63,12 @@ sub build_name {
     # get last filename part
     my $base = basename($self->filename);
 
-    # delete suffix
-    $base =~ s/\.\w+$//;
+    # if this is a page as opposed to a non-page, delete the suffix
+    if ($self->pagetype)
+    {
+        # delete suffix
+        $base =~ s/\.\w+$//;
+    }
 
     return $base;
 }
@@ -88,24 +80,19 @@ sub build_pagename {
     return join '/' => grep {$_ ne ''} $self->parent_page, $self->name;
 }
 
-sub build_pagename_for_non_pages {
-    my $self = shift;
-
-    my $base = basename($self->filename);
-
-    # build from parent_page, infix slash and basename WITH ext
-    return join '/' => grep {$_ ne ''} $self->parent_page, $base;
-}
-
 sub build_pagetype {
     my $self = shift;
 
-    my $ext = '';
-    if ($self->filename =~ /\.(\w+)$/)
-    {
-        $ext = $1;
+    my $file=$self->filename;
+
+    # the extension is the pagetype only if there exists a Muster::Leaf::File::*ext* module for it.
+    if ($file =~ /\.([^.]+)$/) {
+        my $pt = $1;
+        my $subtype = __PACKAGE__ . "::" . $pt;
+        my $has_pagetype = eval "require $subtype;"; # needs to be quoted because $subtype is a variable
+        return $pt if $has_pagetype;
     }
-    return $ext;
+    return '';
 }
 
 sub build_ext {
@@ -158,10 +145,19 @@ sub derive_title {
     return $tc->title();
 }
 
+# this is the default for non-pages
 sub build_html {
     my $self = shift;
     
-    croak 'build_html needs to be overwritten by subclass';
+    my $link = $self->pagename();
+    my $title = $self->derive_title();
+    return <<EOT;
+<h1>$title</h1>
+<p>
+<a href="/$link">$link</a>
+</p>
+EOT
+
 }
 
 1;

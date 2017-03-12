@@ -56,8 +56,12 @@ sub serve_page {
 
     my $pagename = $c->param('pagename') // 'index';
     $pagename =~ s!/$!!; # remove trailing slash - this is a TEMPORARY fix
-
-    my $info = $self->{metadb}->page_info($pagename);
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    unless (defined $info)
+    {
+        $c->reply->not_found;
+        return;
+    }
     my $leaf = undef;
     if (-f $info->{filename})
     {
@@ -71,7 +75,7 @@ sub serve_page {
         return;
     }
 
-    if ($leaf->pagetype eq 'NonPage')
+    if (!$leaf->pagetype)
     {
         $self->_serve_file($c, $leaf->filename);
     }
@@ -104,7 +108,7 @@ sub serve_meta {
 
     my $pagename = $c->param('pagename') // 'index';
 
-    my $info = $self->{metadb}->page_info($pagename);
+    my $info = $self->{metadb}->page_or_file_info($pagename);
     unless (defined $info)
     {
         $c->reply->not_found;

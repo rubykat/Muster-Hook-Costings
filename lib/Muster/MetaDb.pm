@@ -115,15 +115,15 @@ sub delete_one_page {
     return 0;
 } # delete_one_page
 
-=head2 page_info
+=head2 page_or_file_info
 
 Get the info about one page. Returns undef if the page isn't there.
 
-    my $meta = $self->page_info($pagename);
+    my $meta = $self->page_or_file_info($pagename);
 
 =cut
 
-sub page_info {
+sub page_or_file_info {
     my $self = shift;
     my $pagename = shift;
 
@@ -133,7 +133,7 @@ sub page_info {
     }
 
     return $self->_get_page_meta($pagename);
-} # page_info
+} # page_or_file_info
 
 =head2 pagelist
 
@@ -228,7 +228,6 @@ Create the initial tables in the database:
 
 pagefiles: (page, title, name, pagetype, ext, filename, parent_page)
 links: (page, links_to)
-attachments: (page, attachment)
 deepfields: (page, field, value)
 
 =cut
@@ -247,18 +246,6 @@ sub _create_tables {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
     $q = "CREATE TABLE IF NOT EXISTS links (page, links_to, UNIQUE(page, links_to));";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "CREATE TABLE IF NOT EXISTS attachments (page, attachment, UNIQUE(page, attachment));";
-    $ret = $dbh->do($q);
-    if (!$ret)
-    {
-        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-    }
-    $q = "CREATE TABLE IF NOT EXISTS children (page, child, UNIQUE(page, child));";
     $ret = $dbh->do($q);
     if (!$ret)
     {
@@ -294,6 +281,7 @@ sub _generate_derived_tables {
     # ---------------------------------------------------
     # TABLE: flatfields
     # ---------------------------------------------------
+    warn "Generating flatfields table\n";
     my @fieldnames = $self->_get_all_fieldnames();
 
     my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
@@ -368,94 +356,6 @@ sub _generate_derived_tables {
     } # for each page
     $self->_commit();
 
-    # ---------------------------------------------------
-    # TABLE: children
-    # ---------------------------------------------------
-    $iq = "INSERT OR IGNORE INTO children(page, child) VALUES(?, ?);";
-    $isth = $dbh->prepare($iq);
-    if (!$isth)
-    {
-        croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
-    }
-
-    $transaction_on = 0;
-    $num_trans = 0;
-    foreach my $page (@pagenames)
-    {
-        if (!$transaction_on)
-        {
-            my $ret = $dbh->do("BEGIN TRANSACTION;");
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
-            }
-            $transaction_on = 1;
-            $num_trans = 0;
-        }
-        my $children = $self->_get_children_for_page($page);
-        foreach my $child (@{$children})
-        {
-            $ret = $isth->execute($page, $child);
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed '$iq' ($page, $child)";
-            }
-        }
-        # do the commits in bursts
-        $num_trans++;
-        if ($transaction_on and $num_trans > 100)
-        {
-            $self->_commit();
-            $transaction_on = 0;
-            $num_trans = 0;
-        }
-    }
-    $self->_commit();
- 
-    # ---------------------------------------------------
-    # TABLE: attachments -- these are like children, but NonPages
-    # ---------------------------------------------------
-    $iq = "INSERT OR IGNORE INTO attachments(page, attachment) VALUES(?, ?);";
-    $isth = $dbh->prepare($iq);
-    if (!$isth)
-    {
-        croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
-    }
-
-    $transaction_on = 0;
-    $num_trans = 0;
-    foreach my $page (@pagenames)
-    {
-        if (!$transaction_on)
-        {
-            my $ret = $dbh->do("BEGIN TRANSACTION;");
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed 'BEGIN TRANSACTION' : $DBI::errstr";
-            }
-            $transaction_on = 1;
-            $num_trans = 0;
-        }
-        my $attachments = $self->_get_attachments_for_page($page);
-        foreach my $att (@{$attachments})
-        {
-            $ret = $isth->execute($page, $att);
-            if (!$ret)
-            {
-                croak __PACKAGE__ . " failed '$iq' ($page, $att)";
-            }
-        }
-        # do the commits in bursts
-        $num_trans++;
-        if ($transaction_on and $num_trans > 100)
-        {
-            $self->_commit();
-            $transaction_on = 0;
-            $num_trans = 0;
-        }
-    }
-    $self->_commit();
-
     return 1;
 } # _generate_derived_tables
 
@@ -473,7 +373,7 @@ sub _drop_tables {
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pagefiles links attachments children deepfields flatfields))
+    foreach my $table (qw(pagefiles links deepfields flatfields))
     {
         my $q = "DROP TABLE IF EXISTS $table;";
         my $ret = $dbh->do($q);
@@ -534,6 +434,7 @@ sub _update_all_entries {
     $self->_commit();
     $self->_generate_derived_tables();
 
+    warn "UPDATING DONE\n";
 } # _update_all_entries
 
 =head2 _commit
@@ -605,7 +506,7 @@ sub _get_all_pagenames {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT page FROM pagefiles WHERE pagetype != 'NonPage' ORDER BY page;";
+    my $q = "SELECT page FROM pagefiles WHERE pagetype != '' ORDER BY page;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -699,42 +600,6 @@ sub _get_fields_for_page {
     return \%meta;
 } # _get_fields_for_page
 
-=head2 _get_siblings_for_page
-
-Get the "sibling" pages for this page from the "children" table.
-
-    $meta = $self->_get_siblings_for_page($page);
-
-=cut
-
-sub _get_siblings_for_page {
-    my $self = shift;
-    my $pagename = shift;
-
-    return unless $self->{dbh};
-    my $dbh = $self->{dbh};
-    my $q = "SELECT child FROM children WHERE child != ? AND page IN (SELECT parent_page FROM pagefiles WHERE page = ?);";
-
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($pagename, $pagename);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @siblings = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @siblings, $row[0];
-    }
-
-    return \@siblings;
-} # _get_siblings_for_page
-
 =head2 _get_children_for_page
 
 Get the "child" pages for this page from the pagefiles table.
@@ -749,7 +614,7 @@ sub _get_children_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype != "NonPage";';
+    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype != "";';
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -785,7 +650,7 @@ sub _get_attachments_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype = "NonPage";';
+    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype = "";';
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -807,9 +672,45 @@ sub _get_attachments_for_page {
     return \@attachments;
 } # _get_attachments_for_page
 
+=head2 _get_links_for_page
+
+Get the "links" non-pages for this page from the links table.
+
+    $meta = $self->_get_links_for_page($page);
+
+=cut
+
+sub _get_links_for_page {
+    my $self = shift;
+    my $pagename = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = 'SELECT links_to FROM links WHERE page = ?;';
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($pagename);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @links = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @links, $row[0];
+    }
+
+    return \@links;
+} # _get_links_for_page
+
 =head2 _get_page_meta
 
-Get the meta-data for a single page from the flatfields table.
+Get the meta-data for a single page.
 
     $meta = $self->_get_page_meta($page);
 
@@ -822,7 +723,7 @@ sub _get_page_meta {
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT * FROM flatfields WHERE page = ?;";
+    my $q = "SELECT * FROM pagefiles WHERE page = ?;";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -835,13 +736,40 @@ sub _get_page_meta {
         croak "FAILED to execute '$q' $DBI::errstr";
     }
     # return the first matching row because there should be only one row
-    my $meta;
-    if ($meta = $sth->fetchrow_hashref)
+    my $meta = $sth->fetchrow_hashref;
+    if (!$meta)
     {
-        return $meta;
+        return undef;
+    }
+    if ($meta->{pagetype})
+    {
+        # now the rest of the meta, if this is a page
+        $q = "SELECT * FROM flatfields WHERE page = ?;";
+
+        $sth = $dbh->prepare($q);
+        if (!$sth)
+        {
+            croak "FAILED to prepare '$q' $DBI::errstr";
+        }
+        $ret = $sth->execute($pagename);
+        if (!$ret)
+        {
+            croak "FAILED to execute '$q' $DBI::errstr";
+        }
+        # return the first matching row because there should be only one row
+        $meta = $sth->fetchrow_hashref;
+        if (!$meta)
+        {
+            return undef;
+        }
+
+        # get multi-valued fields from other tables
+        $meta->{children} = $self->_get_children_for_page($pagename);
+        $meta->{attachments} = $self->_get_attachments_for_page($pagename);
+        $meta->{links} = $self->_get_links_for_page($pagename);
     }
 
-    return undef;
+    return $meta;
 } # _get_page_meta
 
 =head2 _page_exists
@@ -925,7 +853,7 @@ sub _total_pages {
 
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != 'NonPage';";
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != '';";
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
@@ -1067,14 +995,12 @@ sub _add_page_data {
     # apart from multi-valued things like links
     # Only add in real pages, not non-pages
     # ------------------------------------------------
-    if ($meta{pagetype} ne 'NonPage')
+    if ($meta{pagetype})
     {
         foreach my $field (sort keys %meta)
         {
-            if ($field ne 'attachments'
-                    and $field ne 'links'
-                    and $field ne 'children'
-                    and $field ne 'siblings')
+            if ($field ne 'links'
+                    and $field !~ /^_/)
             {
                 my $value = $meta{$field};
 
@@ -1108,7 +1034,7 @@ sub _delete_page_from_db {
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pagefiles links attachments children deepfields flatfields))
+    foreach my $table (qw(pagefiles links deepfields flatfields))
     {
         my $q = "DELETE FROM $table WHERE page = ?;";
         my $sth = $dbh->prepare($q);

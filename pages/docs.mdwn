@@ -2,4 +2,4 @@
 
 Some documentation for Muster.
 
-* [design](docs/design)
+* [design](design)

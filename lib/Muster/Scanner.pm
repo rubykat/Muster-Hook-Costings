@@ -168,7 +168,7 @@ sub _find_and_scan_all {
 
     my %all_pages = ();
 
-    # We do this in a loop per directory
+    # We do this in a loop per page-directory
     # because we need to know what the current page_dir is
     # in order to calculate what the pagename ought to be
     # which means we need to define the "wanted" function
@@ -224,7 +224,7 @@ sub _create_a_leaf {
 
     my $parent_page = $dir;
     $parent_page =~ s!${page_dir}!!;
-    $parent_page =~ s!^/!!;
+    $parent_page =~ s!^/!!; # remove the leading /
 
     my $leaf = Muster::Leaf::File->new(
         filename    => $filename,

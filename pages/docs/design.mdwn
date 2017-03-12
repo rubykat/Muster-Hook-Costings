@@ -22,7 +22,7 @@ For other kinds of pages, do things like get EXIF data.
 
 From IkiWiki. There, one adds a plugin which parses a new filetype.
 I have a partial implementation: new filetypes are done by adding a new module Muster::Leaf::File::*file-extension*.
-And a special "catchall" module called "NonPage" which stores information about non-page files.
+If there isn't one, then the default Muster::Leaf::File will deal with non-pages (which have an empty pagetype).
 
 ## Separate Scanning Pass
 
@@ -52,7 +52,7 @@ Tables:
 * deepfields: (page, field, value)
 * flatfields: (page, field1, field2, field3....)
 
-Non-pages will be special "pages" with a type of "NonPage", and the URL will be parent/basename.ext (rather than parent/basename) and the binary file will be served.
+Non-pages will be special "pages" with an empty type, and the URL will be parent/basename.ext (rather than parent/basename) and the binary file will be served.
 
 Modes of scanning:
 
