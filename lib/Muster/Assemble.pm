@@ -81,6 +81,8 @@ sub serve_page {
     {
         return $c->redirect_to("/${pagename}/");
     }
+    # and get the global info too
+    $info->{_globalinfo} = $self->{metadb}->global_info();
 
     my $leaf = Muster::Leaf::File->new(%{$info});
     $leaf = $leaf->reclassify();
@@ -118,6 +120,8 @@ sub serve_meta {
         $c->reply->not_found;
         return;
     }
+    # and get the global info too
+    $info->{_globalinfo} = $self->{metadb}->global_info();
 
     my $html = "<pre>\n" . Dump($info) . "\n</pre>\n";
 

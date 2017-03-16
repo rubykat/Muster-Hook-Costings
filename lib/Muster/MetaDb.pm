@@ -135,6 +135,25 @@ sub page_or_file_info {
     return $self->_get_page_meta($pagename);
 } # page_or_file_info
 
+=head2 global_info
+
+Get the global info (plugin-related, not page-related).
+
+    my $global = $self->global_info();
+
+=cut
+
+sub global_info {
+    my $self = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    return $self->_get_globalinfo();
+} # page_or_file_info
+
 =head2 pagelist
 
 Query the database, return a list of pages
@@ -229,6 +248,7 @@ Create the initial tables in the database:
 pagefiles: (page, title, name, pagetype, ext, filename, parent_page)
 links: (page, links_to)
 deepfields: (page, field, value)
+globalinfo: (id, field, value)
 
 =cut
 
@@ -252,6 +272,12 @@ sub _create_tables {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
     $q = "CREATE TABLE IF NOT EXISTS deepfields (page, field, value, UNIQUE(page, field));";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
+    $q = "CREATE TABLE IF NOT EXISTS globalinfo (id, field, value, UNIQUE(id, field));";
     $ret = $dbh->do($q);
     if (!$ret)
     {
@@ -373,7 +399,7 @@ sub _drop_tables {
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pagefiles links deepfields flatfields))
+    foreach my $table (qw(pagefiles links deepfields globalinfo flatfields))
     {
         my $q = "DROP TABLE IF EXISTS $table;";
         my $ret = $dbh->do($q);
@@ -674,7 +700,7 @@ sub _get_attachments_for_page {
 
 =head2 _get_links_for_page
 
-Get the "links" non-pages for this page from the links table.
+Get the "links" pages for this page from the links table.
 
     $meta = $self->_get_links_for_page($page);
 
@@ -771,6 +797,48 @@ sub _get_page_meta {
 
     return $meta;
 } # _get_page_meta
+
+=head2 _get_globalinfo
+
+Get the global scan data.
+
+    $globalinfo = $self->_get_globalinfo();
+
+=cut
+
+sub _get_globalinfo {
+    my $self = shift;
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+    my $q = 'SELECT id,field,value FROM globalinfo;';
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my %globalinfo = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        my $id = $row[0];
+        my $field = $row[1];
+        my $val = $row[2];
+        if (!exists $globalinfo{$id})
+        {
+            $globalinfo{$id} = {};
+        }
+        $globalinfo{$id}{$field} = $val;
+    }
+
+    return \%globalinfo;
+} # _get_globalinfo
 
 =head2 _page_exists
 
@@ -1017,6 +1085,45 @@ sub _add_page_data {
                     croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
                 }
                 $ret = $sth->execute($pagename, $field, $value);
+                if (!$ret)
+                {
+                    croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+                }
+            }
+        }
+    }
+    # ------------------------------------------------
+    # TABLE: globalinfo
+    #
+    # This is for global meta-data which may have been collected
+    # while scanning the pages (for example, shortcut definitions).
+    # %globalinfo = {
+    #   $id => { $f1 => $v, $f2 => $v2 },
+    #   $id2 => { $f5 => $v5, $f6 => $v6 },
+    # }
+    # ------------------------------------------------
+    if ($meta{pagetype} and $meta{_globalinfo})
+    {
+        foreach my $id (sort keys %{$meta{_globalinfo}})
+        {
+            my %globalinfo = %{$meta{_globalinfo}->{$id}};
+            foreach my $field (sort keys %globalinfo)
+            {
+                my $value = $globalinfo{$field};
+
+                next unless defined $value;
+                if (ref $value)
+                {
+                    $value = join("|", @{$value});
+                }
+
+                $q = "INSERT OR REPLACE INTO globalinfo(id, field, value) VALUES(?, ?, ?);";
+                my $sth = $dbh->prepare($q);
+                if (!$sth)
+                {
+                    croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+                }
+                $ret = $sth->execute($id, $field, $value);
                 if (!$ret)
                 {
                     croak __PACKAGE__ . " failed '$q' : $DBI::errstr";

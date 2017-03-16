@@ -16,8 +16,6 @@ Content management system; getting and showing pages.
 =cut
 
 use Mojo::Base 'Mojolicious::Plugin';
-use Muster::Leaf;
-use Muster::Leaf::File;
 use Muster::MetaDb;
 use common::sense;
 use DBI;
