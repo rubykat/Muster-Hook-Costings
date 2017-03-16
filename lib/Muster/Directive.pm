@@ -1,6 +1,6 @@
 package Muster::Directive;
 use Mojo::Base -base;
-use Muster::Crate;
+use Muster::LeafFile;
 
 use Carp 'croak';
 
@@ -23,19 +23,19 @@ Muster::Directive - Muster directive base class
   }
 
   sub scan {
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
     # Magic here! :)
 
-    return $crate;
+    return $leaf;
   }
 
   sub process {
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
     # Magic here! :)
 
-    return $crate;
+    return $leaf;
   }
 
 =head1 DESCRIPTION
@@ -77,18 +77,18 @@ sub init {
 
 =head2 scan
 
-Scans a crate object, updating it with meta-data.
-May leave the crate untouched.
+Scans a leaf object, updating it with meta-data.
+May leave the leaf untouched.
 
 Expects the parameters to the directive.
 
-  my $new_crate = $self->scan($crate,%params);
+  my $new_leaf = $self->scan($leaf,%params);
 
 =cut
 
 sub scan { 
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
     my %params = @_;
 
     return "";
@@ -96,16 +96,16 @@ sub scan {
 
 =head2 process
 
-Processes the "cooked" attribute of a crate object, as part of its processing.
-May leave the crate untouched.
+Processes the "cooked" attribute of a leaf object, as part of its processing.
+May leave the leaf untouched.
 
-  my $new_crate = $self->process($crate,%params);
+  my $new_leaf = $self->process($leaf,%params);
 
 =cut
 
 sub process { 
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
     my %params = @_;
 
     return "";

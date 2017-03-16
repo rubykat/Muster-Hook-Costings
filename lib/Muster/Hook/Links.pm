@@ -17,7 +17,7 @@ L<Muster::Hook::Links> processes for links.
 =cut
 
 use Mojo::Base 'Muster::Hook';
-use Muster::Crate;
+use Muster::LeafFile;
 use YAML::Any;
 
 # ---------------------------------------------
@@ -58,26 +58,26 @@ sub init {
 
 =head2 scan
 
-Scans a crate object, updating it with meta-data.
-It may also update the "contents" attribute of the crate object, in order to
+Scans a leaf object, updating it with meta-data.
+It may also update the "contents" attribute of the leaf object, in order to
 prevent earlier-scanned things being re-scanned by something else later in the
 scanning pass.
-May leave the crate untouched.
+May leave the leaf untouched.
 
-  my $new_crate = $self->scan($crate);
+  my $new_leaf = $self->scan($leaf);
 
 =cut
 sub scan {
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
 
-    if (!$crate->pageinfo->{pagetype})
+    if (!$leaf->pagetype)
     {
-        return $crate;
+        return $leaf;
     }
  
-    my $content = $crate->contents();
-    my $page = $crate->pageinfo->{pagename};
+    my $content = $leaf->cooked();
+    my $page = $leaf->pagename;
     # fudge the content by replacing {{$page}} with the pagename
     $content =~ s!\{\{\$page\}\}!$page!g;
     my %links = ();
@@ -93,23 +93,23 @@ sub scan {
     my @links = sort keys %links;
     if (scalar @links)
     {
-        $crate->{pageinfo}->{links} = \@links;
+        $leaf->{meta}->{links} = \@links;
     }
-    return $crate;
+    return $leaf;
 } # scan
 
 =head2 modify
 
-Modifies the "contents" attribute of a crate object, as part of its processing.
+Modifies the "contents" attribute of a leaf object, as part of its processing.
 
-  my $new_crate = $self->modify($crate);
+  my $new_leaf = $self->modify($leaf);
 
 =cut
 sub modify {
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
 
-    return $crate;
+    return $leaf;
 } # modify
 
 sub is_externallink {

@@ -21,7 +21,7 @@ As with IkiWiki, directives are prefixed with "[[!I<name>"
 
 use Mojo::Base 'Muster::Hook';
 use Carp;
-use Muster::Crate;
+use Muster::LeafFile;
 use YAML::Any;
 use Module::Pluggable search_path => ['Muster::Directive'], instantiate => 'new';
 
@@ -64,48 +64,48 @@ sub init {
 
 =head2 scan
 
-Scans a crate object, updating it with meta-data.
-It may also update the "contents" attribute of the crate object, in order to
+Scans a leaf object, updating it with meta-data.
+It may also update the "contents" attribute of the leaf object, in order to
 prevent earlier-scanned things being re-scanned by something else later in the
 scanning pass.
-May leave the crate untouched.
+May leave the leaf untouched.
 
-  my $new_crate = $self->scan($crate);
+  my $new_leaf = $self->scan($leaf);
 
 =cut
 sub scan {
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
 
-    if (!$crate->pageinfo->{pagetype})
+    if (!$leaf->pagetype)
     {
-        return $crate;
+        return $leaf;
     }
  
-    return $self->do_directives(crate=>$crate, scan=>1);
+    return $self->do_directives(leaf=>$leaf, scan=>1);
 } # scan
 
 =head2 modify
 
-Modifies the "contents" attribute of a crate object, as part of its processing.
+Modifies the "contents" attribute of a leaf object, as part of its processing.
 
-  my $new_crate = $self->modify($crate);
+  my $new_leaf = $self->modify($leaf);
 
 =cut
 sub modify {
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
 
-    if (!$crate->pageinfo->{pagetype})
+    if (!$leaf->pagetype)
     {
-        return $crate;
+        return $leaf;
     }
-    return $self->do_directives(crate=>$crate, scan=>0);
+    return $self->do_directives(leaf=>$leaf, scan=>0);
 } # modify
 
 =head2 do_directives
 
-Extracts and processes directives from the content of the crate.
+Extracts and processes directives from the content of the leaf.
 
 =cut
 
@@ -113,9 +113,9 @@ sub do_directives {
     my $self = shift;
     my %args = @_;
 
-    my $crate = $args{crate};
-    my $page = $crate->pageinfo->{pagename};
-    my $content = $crate->contents;
+    my $leaf = $args{leaf};
+    my $page = $leaf->pagename;
+    my $content = $leaf->cooked;
     my $scan = $args{scan};
 
     # adapted fom IkiWiki code
@@ -200,7 +200,7 @@ sub do_directives {
             if (! $scan) # not scanning
             {
                 $ret=eval {
-                    $self->{directives}->{$command}->process($crate, @params);
+                    $self->{directives}->{$command}->process($leaf, @params);
                 };
                 if ($@)
                 {
@@ -215,7 +215,7 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $self->{directives}->{$command}->scan($crate, @params);
+                    $self->{directives}->{$command}->scan($leaf, @params);
                 };
                 $ret="";
             }
@@ -257,9 +257,8 @@ sub do_directives {
 
     $content =~ s{$regex}{$handle->($1, $2, $3, $4)}eg;
 
-    $crate->{contents} = $content;
-    warn __PACKAGE__, " processed crate is ", Dump($crate);
-    return $crate;
+    $leaf->{cooked} = $content;
+    return $leaf;
 } # do_directives
 
 1;

@@ -1,19 +1,19 @@
 package Muster::Hook;
 use Mojo::Base -base;
-use Muster::Crate;
+use Muster::LeafFile;
 
 use Carp 'croak';
 
 sub scan { 
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
-    return $crate;
+    return $leaf;
 }
 
 sub modify { 
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
-    return $crate;
+    return $leaf;
 }
 
 sub init {
@@ -42,19 +42,19 @@ Muster::Hook - Muster hook base class
   }
 
   sub scan {
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
     # Magic here! :)
 
-    return $crate;
+    return $leaf;
   }
 
   sub modify {
-    my ($self, $crate) = @_;
+    my ($self, $leaf) = @_;
 
     # Magic here! :)
 
-    return $crate;
+    return $leaf;
   }
 
 =head1 DESCRIPTION
@@ -72,20 +72,20 @@ the following new ones.
 
 =head2 scan
 
-Scans a crate object, updating it with meta-data.
-It may also update the "content" attribute of the crate object, in order to
+Scans a leaf object, updating it with meta-data.
+It may also update the "content" attribute of the leaf object, in order to
 prevent earlier-scanned things being re-scanned by something else later in the
 scanning pass.
-May leave the crate untouched.
+May leave the leaf untouched.
 
-  my $new_crate = $self->scan($crate);
+  my $new_leaf = $self->scan($leaf);
 
 =head2 modify
 
-Modifies the content attribute of a crate object, as part of its processing.
-May leave the crate untouched.
+Modifies the content attribute of a leaf object, as part of its processing.
+May leave the leaf untouched.
 
-  my $new_crate = $self->modify($crate);
+  my $new_leaf = $self->modify($leaf);
 
 =cut
 

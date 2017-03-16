@@ -15,8 +15,7 @@ keeping meta-data about pages.
 use Mojo::Base -base;
 use Carp;
 use Muster::MetaDb;
-use Muster::Leaf::File;
-use Muster::Crate;
+use Muster::LeafFile;
 use Muster::Hook;
 use File::Spec;
 use File::Find;
@@ -99,26 +98,29 @@ sub scan_one_page {
     {
         my $finder = sub {
 
-            my $chopped_file = $File::Find::name;
-            $chopped_file =~ s/\.\w+$//;
-            # this 'pagefile' won't be the file itself
-            # it will be the file without its extension
-            my $pagefile = File::Spec->catfile($page_dir, $pagename);
-
-            if (-f -r $File::Find::name and $chopped_file eq $pagefile)
+            # only interested in files with extensions
+            if ($File::Find::name =~ /\.\w+$/)
             {
-                warn "SCANNING: $File::Find::name\n";
-                my $crate = $self->_create_and_scan_crate(
-                    page_dir=>$page_dir,
-                    filename=>$File::Find::name,
-                    dir=>$File::Find::dir,
-                );
-                if ($crate)
+                my $chopped_file = $File::Find::name;
+                $chopped_file =~ s/\.\w+$//;
+                # this 'pagefile' won't be the file itself
+                # it will be the file without its extension
+                my $pagefile = File::Spec->catfile($page_dir, $pagename);
+
+                if (-f -r $File::Find::name and $chopped_file eq $pagefile)
                 {
-                    my $page = $crate->pageinfo->{pagename};
-                    if (!$found_page)
+                    warn "SCANNING: $File::Find::name\n";
+                    my $leaf = $self->_create_and_scan_leaf(
+                        page_dir=>$page_dir,
+                        filename=>$File::Find::name,
+                        dir=>$File::Find::dir,
+                    );
+                    if ($leaf)
                     {
-                        $found_page = $crate;
+                        if (!$found_page)
+                        {
+                            $found_page = $leaf;
+                        }
                     }
                 }
             }
@@ -135,6 +137,7 @@ sub scan_one_page {
     }
 
     my $meta = $found_page->meta();
+    warn __PACKAGE__, " scan_one_page: meta is ", Dump($meta);
     unless (defined $meta)
     {
         warn __PACKAGE__, " scan_one_page meta for '$pagename' not found";
@@ -194,7 +197,6 @@ sub _find_and_scan_all {
     my $self = shift;
 
     my %all_pages = ();
-    my @all_globals = ();
 
     # We do this in a loop per page-directory
     # because we need to know what the current page_dir is
@@ -211,19 +213,18 @@ sub _find_and_scan_all {
             if (-f -r $File::Find::name and $File::Find::name !~ /(^\.|\/\.)/)
             {
                 warn "SCANNING: $File::Find::name\n";
-                my $crate = $self->_create_and_scan_crate(
+                my $leaf = $self->_create_and_scan_leaf(
                     page_dir=>$page_dir,
                     filename=>$File::Find::name,
                     dir=>$File::Find::dir,
                 );
-                if ($crate)
+                if ($leaf)
                 {
-                    my $page = $crate->pageinfo->{pagename};
+                    my $page = $leaf->pagename;
                     if (!exists $all_pages{$page})
                     {
-                        $all_pages{$page} = $crate->pageinfo;
+                        $all_pages{$page} = $leaf->meta;
                     }
-                    push @all_globals, $crate->globals;
                 }
             }
         };
@@ -235,15 +236,15 @@ sub _find_and_scan_all {
     $self->{metadb}->update_all_pages(%all_pages);
 } # _find_and_scan_all
 
-=head2 _create_and_scan_crate
+=head2 _create_and_scan_leaf
 
-Create and scan a crate (which contains pageinfo, content and globals).
+Create and scan a leaf (which contains meta-data and content).
     
-    $crate = $self->_create_and_scan_crate(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
+    $leaf = $self->_create_and_scan_leaf(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
 
 =cut
 
-sub _create_and_scan_crate {
+sub _create_and_scan_leaf {
     my $self = shift;
     my %args = @_;
 
@@ -258,7 +259,7 @@ sub _create_and_scan_crate {
     $parent_page =~ s!${page_dir}!!;
     $parent_page =~ s!^/!!; # remove the leading /
 
-    my $leaf = Muster::Leaf::File->new(
+    my $leaf = Muster::LeafFile->new(
         filename    => $filename,
         parent_page => $parent_page,
     );
@@ -267,22 +268,17 @@ sub _create_and_scan_crate {
     {
         croak "ERROR: leaf did not reclassify\n";
     }
-    my $crate = Muster::Crate->new(
-        pageinfo => $leaf->meta,
-        content => $leaf->raw,
-        globals => {},
-    );
 
     # -------------------------------------------
     # Scan
     # -------------------------------------------
     foreach my $hook (@{$self->{hooks}})
     {
-        $crate = $hook->scan($crate);
+        $leaf = $hook->scan($leaf);
     }
 
-    return $crate;
-} # _create_and_scan_crate
+    return $leaf;
+} # _create_and_scan_leaf
 
 1; # End of Muster::Scanner
 __END__

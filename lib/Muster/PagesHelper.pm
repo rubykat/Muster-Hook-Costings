@@ -18,12 +18,9 @@ Content management system; getting and showing pages.
 use Mojo::Base 'Mojolicious::Plugin';
 use Muster::MetaDb;
 use common::sense;
-use DBI;
 use Text::NeatTemplate;
 use YAML::Any;
-use File::Slurper 'read_binary';
 use File::Basename 'basename';
-use POSIX qw(ceil);
 use Mojo::URL;
 use HTML::LinkList;
 

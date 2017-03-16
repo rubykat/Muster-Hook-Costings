@@ -1,14 +1,14 @@
-package Muster::Leaf::File::mdwn;
+package Muster::LeafFile::mdwn;
 
-#ABSTRACT: Muster::Leaf::File::mdwn - a Markdown file in a Muster content tree
+#ABSTRACT: Muster::LeafFile::mdwn - a Markdown file in a Muster content tree
 =head1 NAME
 
-Muster::Leaf::File::mdwn - a Markdown file in a Muster content tree
+Muster::LeafFile::mdwn - a Markdown file in a Muster content tree
 
 =head1 SYNOPSIS
 
-    use Muster::Leaf::File;
-    my $file = Muster::Leaf::File->new(
+    use Muster::LeafFile;
+    my $file = Muster::LeafFile->new(
         filename => 'foo.md'
     );
     my $html = $file->html;
@@ -20,7 +20,7 @@ This is a markdown file.
 
 =cut
 
-use Mojo::Base 'Muster::Leaf::File';
+use Mojo::Base 'Muster::LeafFile';
 
 use Carp;
 use Mojo::Util      'decode';

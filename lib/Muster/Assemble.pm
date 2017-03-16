@@ -18,7 +18,7 @@ use Mojo::Base -base;
 
 use Carp;
 use Muster::MetaDb;
-use Muster::Leaf::File;
+use Muster::LeafFile;
 use File::Slurper 'read_binary';
 use YAML::Any;
 
@@ -84,7 +84,7 @@ sub serve_page {
     # and get the global info too
     $info->{_globalinfo} = $self->{metadb}->global_info();
 
-    my $leaf = Muster::Leaf::File->new(%{$info});
+    my $leaf = Muster::LeafFile->new(%{$info});
     $leaf = $leaf->reclassify();
 
     my $html = $leaf->html();

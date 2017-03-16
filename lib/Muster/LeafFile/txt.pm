@@ -1,14 +1,14 @@
-package Muster::Leaf::File::txt;
+package Muster::LeafFile::txt;
 
-#ABSTRACT: Muster::Leaf::File::txt - a plain text file in a Muster content tree
+#ABSTRACT: Muster::LeafFile::txt - a plain text file in a Muster content tree
 =head1 NAME
 
-Muster::Leaf::File::txt - a plain text file in a Muster content tree
+Muster::LeafFile::txt - a plain text file in a Muster content tree
 
 =head1 SYNOPSIS
 
-    use Muster::Leaf::File;
-    my $file = Muster::Leaf::File->new(
+    use Muster::LeafFile;
+    my $file = Muster::LeafFile->new(
         filename => 'foo.md'
     );
     my $html = $file->html;
@@ -20,7 +20,7 @@ This is a plain text file.
 
 =cut
 
-use Mojo::Base 'Muster::Leaf::File';
+use Mojo::Base 'Muster::LeafFile';
 
 use Carp;
 use Mojo::Util      'decode';

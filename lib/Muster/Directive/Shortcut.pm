@@ -1,6 +1,6 @@
 package Muster::Directive::Shortcut;
 use Mojo::Base -base;
-use Muster::Crate;
+use Muster::LeafFile;
 
 use Carp 'croak';
 
@@ -41,43 +41,43 @@ sub init {
 
 =head2 scan
 
-Scans a crate object, updating it with meta-data.
-May leave the crate untouched.
+Scans a leaf object, updating it with meta-data.
+May leave the leaf untouched.
 
 Expects the parameters to the directive.
 
-  my $new_crate = $self->scan($crate,%params);
+  my $new_leaf = $self->scan($leaf,%params);
 
 =cut
 
 sub scan { 
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
     my %params = @_;
 
     if (!$params{name} or !$params{url})
     {
         return __PACKAGE__, " ERROR: missing name or url parameter";
     }
-    if (!exists $crate->{globals}->{$self->id})
+    if (!exists $leaf->{meta}->{_globalinfo}->{$self->id})
     {
-        $crate->{globals}->{$self->id} = {};
+        $leaf->{meta}->{_globalinfo}->{$self->id} = {};
     }
-    $crate->{globals}->{$self->id}->{$params{name}} = $params{url};
+    $leaf->{meta}->{_globalinfo}->{$self->id}->{$params{name}} = $params{url};
     return sprintf("shortcut %s points to <i>%s</i>", $params{name}, $params{url});
 }
 
 =head2 process
 
-Processes the content attribute of a crate object, as part of its processing.
+Processes the content attribute of a leaf object, as part of its processing.
 
-  my $new_crate = $self->process($crate,%params);
+  my $new_leaf = $self->process($leaf,%params);
 
 =cut
 
 sub process { 
     my $self = shift;
-    my $crate = shift;
+    my $leaf = shift;
     my %params = @_;
 
     return "";
