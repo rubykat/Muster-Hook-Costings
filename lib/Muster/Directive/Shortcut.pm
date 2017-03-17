@@ -29,59 +29,33 @@ sub id {
     return 'shortcut';
 }
 
-=head2 init
+=head2 register_directive
 
 Do some intialization.
 
 =cut
-sub init {
+sub register_directive {
     my $self = shift;
+    my $dirmod = shift;
+    my $conf = shift;
+
+    # the shortcuts are defined in the config
+    foreach my $sh (keys %{$conf})
+    {
+        $dirmod->add_directive($sh => sub {
+                my $leaf = shift;
+                my $scan = shift;
+                my @params = @_;
+
+                return $self->shortcut_expand(
+                    $conf->{$sh}->{url},
+                    $conf->{$sh}->{desc},
+                    @params);
+            },
+        );
+    }
     return $self;
-}
-
-=head2 scan
-
-Scans a leaf object, updating it with meta-data.
-May leave the leaf untouched.
-
-Expects the parameters to the directive.
-
-  my $new_leaf = $self->scan($leaf,%params);
-
-=cut
-
-sub scan { 
-    my $self = shift;
-    my $leaf = shift;
-    my %params = @_;
-
-    if (!$params{name} or !$params{url})
-    {
-        return __PACKAGE__, " ERROR: missing name or url parameter";
-    }
-    if (!exists $leaf->{meta}->{_globalinfo}->{$self->id})
-    {
-        $leaf->{meta}->{_globalinfo}->{$self->id} = {};
-    }
-    $leaf->{meta}->{_globalinfo}->{$self->id}->{$params{name}} = $params{url};
-    return sprintf("shortcut %s points to <i>%s</i>", $params{name}, $params{url});
-}
-
-=head2 process
-
-Processes the content attribute of a leaf object, as part of its processing.
-
-  my $new_leaf = $self->process($leaf,%params);
-
-=cut
-
-sub process { 
-    my $self = shift;
-    my $leaf = shift;
-    my %params = @_;
-
-    return "";
-}
+} # register_directive
 
 =head2 shortcut_expand
 

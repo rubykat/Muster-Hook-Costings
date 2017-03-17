@@ -22,20 +22,85 @@ As with IkiWiki, directives are prefixed with "[[!I<name>"
 use Mojo::Base 'Muster::Hook';
 use Carp;
 use Muster::LeafFile;
+use Muster::Scanner;
 use YAML::Any;
 use Module::Pluggable search_path => ['Muster::Directive'], instantiate => 'new';
 
+
+has directives => sub { {} };
+
 =head1 METHODS
 
-=head2 init
+=head2 register_scan
 
-Initializes the object
+Initialize, and register hooks.
 
 =cut
-sub init {
+sub register_scan {
     my $self = shift;
+    my $scanner = shift;
+    my $conf = shift;
 
-    my $app = $self->{scanner}->command->app;
+    # if there is no config, there are no directives to register
+    if (!$conf)
+    {
+        return $self;
+    }
+    # Directives are defined by Muster::Directive objects
+    # The Pluggable module will find all possible directives
+    # but the config will have defined a subset
+    my %dirmods = ();
+    foreach my $ph ($self->plugins())
+    {
+        $dirmods{ref $ph} = $ph;
+    }
+    foreach my $dm (@{$conf->{directives}})
+    {
+        my $cf = $conf->{direc_conf}->{$dm};
+        if ($dirmods{$dm})
+        {
+            $dirmods{$dm}->register_directive($self,$cf);
+        }
+        else
+        {
+            warn "Directive '$dm' does not exist";
+        }
+    }
+
+    $scanner->add_hook('Directives' => sub {
+            my $leaf = shift;
+            return $self->scan($leaf);
+        },
+    );
+    return $self;
+} # register_scan
+
+=head2 add_directive
+
+Add a scanning hook.
+
+=cut
+sub add_directive {
+    my ($self, $name, $call) = @_;
+    $self->directives->{$name} = $call;
+    return $self;
+} # add_directive
+
+=head2 register_modify
+
+Initialize, and register hooks.
+
+=cut
+sub register_modify {
+    my $self = shift;
+    my $assembler = shift;
+    my $conf = shift;
+
+    # if there is no config, there are no directives to register
+    if (!$conf)
+    {
+        return $self;
+    }
     # Directives are defined by Muster::Directive objects
     # The Pluggable module will find all possible directives
     # but the config will have defined a subset
@@ -43,24 +108,29 @@ sub init {
     my %dirmods = ();
     foreach my $ph ($self->plugins())
     {
-        $ph->{directive_controller} = $self;
         $dirmods{ref $ph} = $ph;
-        $ph->init();
+        $ph->register_directive($assembler);
     }
-    foreach my $dm (@{$app->config->{directives}})
+    foreach my $dm (@{$conf->{directives}})
     {
+        my $cf = $conf->{direc_conf}->{$dm};
         if ($dirmods{$dm})
         {
-            my $id = $dirmods{$dm}->id;
-            $self->{directives}->{$id} = $dirmods{$dm};
+            $dirmods{$dm}->register_directive($self,$cf);
         }
         else
         {
             warn "Directive '$dm' does not exist";
         }
     }
+
+    $assembler->add_hook('Directives' => sub {
+            my $leaf = shift;
+            return $self->modify($leaf);
+        },
+    );
     return $self;
-} # init
+} # register_modify
 
 =head2 scan
 
@@ -114,9 +184,9 @@ sub do_directives {
     my %args = @_;
 
     my $leaf = $args{leaf};
+    my $scan = $args{scan};
     my $page = $leaf->pagename;
     my $content = $leaf->cooked;
-    my $scan = $args{scan};
 
     # adapted fom IkiWiki code
     my $handle=sub {
@@ -187,12 +257,12 @@ sub do_directives {
                     push @params, $val, '';
                 }
             }
-            if ($self->{scanner}->{preprocessing}->{$page}++ > 8)
+            if ($self->{preprocessing}->{$page}++ > 8)
             {
                 # Avoid loops of preprocessed pages preprocessing
                 # other pages that preprocess them, etc.
                 return "[[!$command <span class=\"error\">".
-                        sprintf(gettext("preprocessing loop detected on %s at depth %i"),
+                        sprintf("preprocessing loop detected on %s at depth %i",
                             $page, $self->{scanner}->{preprocessing}->{$page}).
                         "</span>]]";
             }
@@ -200,7 +270,7 @@ sub do_directives {
             if (! $scan) # not scanning
             {
                 $ret=eval {
-                    $self->{directives}->{$command}->process($leaf, @params);
+                    $self->{directives}->{$command}($leaf, $scan, @params);
                 };
                 if ($@)
                 {
@@ -209,17 +279,17 @@ sub do_directives {
                     eval q{use HTML::Entities};
                     $error = encode_entities($error);
                     $ret="[[!$command <span class=\"error\">".
-                            gettext("Error").": $error"."</span>]]";
+                            "Error".": $error"."</span>]]";
                 }
             }
             else # scanning
             {
                 eval {
-                    $self->{directives}->{$command}->scan($leaf, @params);
+                    $self->{directives}->{$command}($leaf, $scan, @params);
                 };
                 $ret="";
             }
-            $self->{scanner}->{preprocessing}->{$page}--;
+            $self->{preprocessing}->{$page}--;
             return $ret;
         }
         else # this is not a known command

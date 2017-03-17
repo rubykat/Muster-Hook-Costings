@@ -52,32 +52,46 @@ sub init {
     $self->{metadb} = Muster::MetaDb->new(%{$app->config});
     $self->{metadb}->init();
 
-    # Hooks are defined by Muster::Hook objects
-    # The Pluggable module will find all possible hooks
-    # but the config will have defined a subset
-    # in the order we want to apply them.
-    $self->{hooks} = [];
+    # Hooks are defined by Muster::Hook objects. The Pluggable module will find
+    # all possible hooks but the config will have defined a subset in the order
+    # we want to apply them.
+    # The way this is done is that we call "register_scan" for the hooks in that order,
+    # and while a given hook object may have more than one callback, at least
+    # all of the hooks for THAT module will come after the module before, etc.
+    $self->{hooks} = {};
+    $self->{hookorder} = [];
     my %phooks = ();
     foreach my $ph ($self->plugins())
     {
-        $ph->{scanner} = $self;
         $phooks{ref $ph} = $ph;
-        $ph->init();
     }
-    foreach my $hookmod (@{$app->config->{scanner}->{hooks}})
+    foreach my $hookmod (@{$app->config->{hooks}})
     {
+        my $cf = $app->config->{hook_conf}->{$hookmod};
         if ($phooks{$hookmod})
         {
-            push @{$self->{hooks}}, $phooks{$hookmod};
+            $phooks{$hookmod}->register_scan($self,$cf);
         }
         else
         {
-            warn "Scanner hook '$hookmod' does not exist";
+            warn "Hook '$hookmod' does not exist";
         }
     }
 
     return $self;
 } # init
+
+=head2 add_hook
+
+Add a scanning hook.
+
+=cut
+sub add_hook {
+    my ($self, $name, $call) = @_;
+    $self->{hooks}->{$name} = $call;
+    push @{$self->{hookorder}}, $name;
+    return $self;
+} # add_hook
 
 =head2 scan_one_page
 
@@ -137,7 +151,6 @@ sub scan_one_page {
     }
 
     my $meta = $found_page->meta();
-    warn __PACKAGE__, " scan_one_page: meta is ", Dump($meta);
     unless (defined $meta)
     {
         warn __PACKAGE__, " scan_one_page meta for '$pagename' not found";
@@ -272,9 +285,9 @@ sub _create_and_scan_leaf {
     # -------------------------------------------
     # Scan
     # -------------------------------------------
-    foreach my $hook (@{$self->{hooks}})
+    foreach my $hn (@{$self->{hookorder}})
     {
-        $leaf = $hook->scan($leaf);
+        $leaf = $self->{hooks}->{$hn}($leaf);
     }
 
     return $leaf;

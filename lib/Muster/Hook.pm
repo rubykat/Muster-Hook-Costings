@@ -4,25 +4,6 @@ use Muster::LeafFile;
 
 use Carp 'croak';
 
-sub scan { 
-    my ($self, $leaf) = @_;
-
-    return $leaf;
-}
-
-sub modify { 
-    my ($self, $leaf) = @_;
-
-    return $leaf;
-}
-
-sub init {
-    my $self = shift;
-    return $self;
-}
-
-1;
-
 =encoding utf8
 
 =head1 NAME
@@ -35,7 +16,7 @@ Muster::Hook - Muster hook base class
   package Muster::Hook::MyHook;
   use Mojo::Base 'Muster::Hook';
 
-  sub init {
+  sub register {
       my $self = shift;
 
       return $self;
@@ -70,6 +51,32 @@ the data collected in the scanning pass will be used in the assembly pass.
 L<Muster::Hook> inherits all methods from L<Mojo::Base> and implements
 the following new ones.
 
+=head2 register_scan
+
+Initialize, and register hooks.
+
+=cut
+sub register_scan {
+    my $self = shift;
+    my $scanner = shift;
+    my $conf = shift;
+
+    return $self;
+} # register_scan
+
+=head2 register_modify
+
+Initialize, and register hooks.
+
+=cut
+sub register_modify {
+    my $self = shift;
+    my $assembler = shift;
+    my $conf = shift;
+
+    return $self;
+} # register_modify
+
 =head2 scan
 
 Scans a leaf object, updating it with meta-data.
@@ -80,6 +87,13 @@ May leave the leaf untouched.
 
   my $new_leaf = $self->scan($leaf);
 
+=cut
+sub scan { 
+    my ($self, $leaf) = @_;
+
+    return $leaf;
+}
+
 =head2 modify
 
 Modifies the content attribute of a leaf object, as part of its processing.
@@ -89,3 +103,10 @@ May leave the leaf untouched.
 
 =cut
 
+sub modify { 
+    my ($self, $leaf) = @_;
+
+    return $leaf;
+}
+
+1;

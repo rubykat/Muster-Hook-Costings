@@ -45,16 +45,41 @@ my $Url_Regexp = qr/^(?:[^:]+:\/\/|mailto:).*/i;
 
 =head1 METHODS
 
-=head2 init
+=head2 register_scan
 
 Initializes the object
 
 =cut
-sub init {
+sub register_scan {
     my $self = shift;
+    my $scanner = shift;
+    my $conf = shift;
 
+    $scanner->add_hook('links' => sub {
+            my $leaf = shift;
+            return $self->scan($leaf);
+        },
+    );
     return $self;
-} # init
+} # register_scan
+
+=head2 register_modify
+
+Initializes the object
+
+=cut
+sub register_modify {
+    my $self = shift;
+    my $assembler = shift;
+    my $conf = shift;
+
+    $assembler->add_hook('links' => sub {
+            my $leaf = shift;
+            return $self->modify($leaf);
+        },
+    );
+    return $self;
+} # register_modify
 
 =head2 scan
 

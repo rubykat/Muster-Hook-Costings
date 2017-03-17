@@ -307,7 +307,7 @@ sub _generate_derived_tables {
     # ---------------------------------------------------
     # TABLE: flatfields
     # ---------------------------------------------------
-    warn "Generating flatfields table\n";
+    print STDERR "Generating flatfields table\n";
     my @fieldnames = $self->_get_all_fieldnames();
 
     my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
@@ -436,7 +436,7 @@ sub _update_all_entries {
     my $num_trans = 0;
     foreach my $pn (sort keys %pages)
     {
-        warn "UPDATING $pn\n";
+        print STDERR "UPDATING $pn\n";
         if (!$transaction_on)
         {
             my $ret = $dbh->do("BEGIN TRANSACTION;");
@@ -460,7 +460,7 @@ sub _update_all_entries {
     $self->_commit();
     $self->_generate_derived_tables();
 
-    warn "UPDATING DONE\n";
+    print STDERR "UPDATING DONE\n";
 } # _update_all_entries
 
 =head2 _commit

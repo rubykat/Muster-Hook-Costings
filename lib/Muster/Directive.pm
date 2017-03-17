@@ -16,7 +16,7 @@ Muster::Directive - Muster directive base class
   package Muster::Directive::MyDirective;
   use Mojo::Base 'Muster::Directive';
 
-  sub init {
+  sub register {
       my $self = shift;
 
       return $self;
@@ -65,47 +65,32 @@ sub id {
     return pop @bits;
 }
 
-=head2 init
+=head2 register_directive
 
-Do some intialization.
+Register
 
 =cut
-sub init {
+sub register_directive {
     my $self = shift;
+    my $scanner = shift;
+    my $conf = shift;
+
     return $self;
-}
-
-=head2 scan
-
-Scans a leaf object, updating it with meta-data.
-May leave the leaf untouched.
-
-Expects the parameters to the directive.
-
-  my $new_leaf = $self->scan($leaf,%params);
-
-=cut
-
-sub scan { 
-    my $self = shift;
-    my $leaf = shift;
-    my %params = @_;
-
-    return "";
-}
+} # register_directive
 
 =head2 process
 
-Processes the "cooked" attribute of a leaf object, as part of its processing.
+Scan or Processes a leaf object, as part of its processing.
 May leave the leaf untouched.
 
-  my $new_leaf = $self->process($leaf,%params);
+  my $new_leaf = $self->process($leaf,$scan,%params);
 
 =cut
 
 sub process { 
     my $self = shift;
     my $leaf = shift;
+    my $scan = shift;
     my %params = @_;
 
     return "";
