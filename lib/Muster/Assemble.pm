@@ -47,18 +47,6 @@ sub init {
     return $self;
 } # init
 
-=head2 add_hook
-
-Add a hook.
-
-=cut
-sub add_hook {
-    my ($self, $name, $call) = @_;
-    $self->{hooks}->{$name} = $call;
-    push @{$self->{hookorder}}, $name;
-    return $self;
-} # add_hook
-
 =head2 serve_page
 
 Serve one page (or a file)
@@ -146,6 +134,58 @@ sub serve_meta {
     $c->stash('content' => $html);
     $c->render(template => 'page');
 }
+
+=head2 serve_source
+
+Serve the source-content for a page (for debugging purposes)
+Only works for known pagetypes. (We don't want to be sending a binary file!)
+
+=cut
+sub serve_source {
+    my $self = shift;
+    my $c = shift;
+    my $app = $c->app;
+
+    $self->init($c);
+
+    # If this is a page, there ought to be a trailing slash in the cpath.
+    # If there isn't, either this isn't canonical, or it isn't a page.
+    # However, pagenames don't have a trailing slash.
+    # Yes, this is confusing.
+    my $pagename = $c->param('cpath') // 'index';
+    my $has_trailing_slash = 0;
+    if ($pagename =~ m!/$!)
+    {
+        $has_trailing_slash = 1;
+        $pagename =~ s!/$!!;
+    }
+
+    # now we need to find if this page exists, and what type it is
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    unless (defined $info and defined $info->{filename} and -f -r $info->{filename})
+    {
+        $c->reply->not_found;
+        return;
+    }
+    if (!$info->{pagetype}) # a non-page
+    {
+        $c->reply->not_found;
+        return;
+    }
+
+    my $leaf = $self->_create_and_process_leaf(%{$info});
+
+    my $content = $leaf->raw();
+    unless (defined $content)
+    {
+        $c->reply->not_found;
+        return;
+    }
+
+    $c->stash('pagename' => $pagename);
+    $c->stash('content' => "<pre>$content</pre>");
+    $c->render(template => 'page');
+} # serve_source
 
 =head1 Helper Functions
 

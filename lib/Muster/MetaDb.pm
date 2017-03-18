@@ -107,7 +107,7 @@ sub delete_one_page {
         return undef;
     }
 
-    if ($self->_page_exists($pagename))
+    if ($self->page_exists($pagename))
     {
         return $self->_delete_page_from_db($pagename);
     }
@@ -189,6 +189,90 @@ sub total_pages {
 
     return $self->_total_pages(%args);
 } # total_pages
+
+=head2 page_exists
+
+Does this page exist in the database?
+
+=cut
+
+sub page_exists {
+    my $self = shift;
+    my $page = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+    my $dbh = $self->{dbh};
+
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE page = ?;";
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($page);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my $total = 0;
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        $total = $row[0];
+    }
+    return $total > 0;
+} # page_exists
+
+=head2 find_pagename
+
+Does this page exist in the database?
+This does a case-insensitive check if there isn't an exact match.
+Returns the real pagename if it is found, otherwise empty string.
+
+=cut
+
+sub find_pagename {
+    my $self = shift;
+    my $page = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+    if ($self->page_exists($page))
+    {
+        return $page;
+    }
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+
+    # set both the column and the query to uppercase
+    my $q = "SELECT page FROM pagefiles WHERE UPPER(page) = ?;";
+    my $upper_page = uc($page);
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($upper_page);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my $realpage = '';
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        $realpage = $row[0];
+    }
+    return $realpage;
+} # find_pagename
 
 =head1 Helper Functions
 
@@ -840,40 +924,6 @@ sub _get_globalinfo {
     return \%globalinfo;
 } # _get_globalinfo
 
-=head2 _page_exists
-
-Does this page exist in the database?
-
-=cut
-
-sub _page_exists {
-    my $self = shift;
-    my $page = shift;
-
-    return unless $self->{dbh};
-    my $dbh = $self->{dbh};
-
-    my $q = "SELECT COUNT(*) FROM pagefiles WHERE page = ?;";
-
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($page);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my $total = 0;
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        $total = $row[0];
-    }
-    return $total > 0;
-} # _page_exists
-
 =head2 _total_pagefiles
 
 Find the total records in the database.
@@ -983,7 +1033,7 @@ sub _add_page_data {
     # and do an INSERT or UPDATE depending on whether it does.
     # This is faster than REPLACE because it doesn't need
     # to rebuild indexes.
-    my $page_exists = $self->_page_exists($pagename);
+    my $page_exists = $self->page_exists($pagename);
     my $q;
     my $ret;
     if ($page_exists)

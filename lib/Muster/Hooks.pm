@@ -14,6 +14,7 @@ scanning and processing hooks
 
 use Mojo::Base -base;
 use Carp;
+use Muster::MetaDb;
 use Muster::LeafFile;
 use Muster::Hook;
 use File::Spec;
@@ -31,6 +32,10 @@ Set the defaults for the object if they are not defined already.
 sub init {
     my $self = shift;
     my $config = shift;
+
+    # connect to the metadb because some hooks might need the info
+    $self->{metadb} = Muster::MetaDb->new(%{$config});
+    $self->{metadb}->init();
 
     # Hooks are defined by Muster::Hook objects. The Pluggable module will find
     # all possible hooks but the config will have defined a subset in the order

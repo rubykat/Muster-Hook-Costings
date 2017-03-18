@@ -51,6 +51,12 @@ sub do_directives {
     my $scan = $args{scanning};
     my $directive = $args{directive};
     my $call = $args{call};
+
+    # do nothing if this is not a page
+    if (!$leaf->pagetype)
+    {
+        return $leaf;
+    }
     my $page = $leaf->pagename;
     my $content = $leaf->cooked;
 
