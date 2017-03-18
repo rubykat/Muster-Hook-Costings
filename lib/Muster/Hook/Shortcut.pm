@@ -1,6 +1,7 @@
-package Muster::Directive::Shortcut;
-use Mojo::Base -base;
+package Muster::Hook::Shortcut;
+use Mojo::Base 'Muster::Hook::Directives';
 use Muster::LeafFile;
+use Muster::Hooks;
 
 use Carp 'croak';
 
@@ -8,55 +9,57 @@ use Carp 'croak';
 
 =head1 NAME
 
-Muster::Directive::Shortcut - Muster shortcut directive
+Muster::Hook::Shortcut - Muster shortcut directive
 
 =head1 DESCRIPTION
 
-L<Muster::Directive::Shortcut> creates shortcuts.
+L<Muster::Hook::Shortcut> creates shortcuts.
 
 =head1 METHODS
 
-L<Muster::Directive::Shortcut> inherits all methods from L<Muster::Directive>.
+L<Muster::Hook::Shortcut> inherits all methods from L<Muster::Hook::Directives>.
 
-=head2 id
-
-The id of the directive. Used as the command-name.
-
-=cut
-
-sub id {
-    my $class = shift;
-    return 'shortcut';
-}
-
-=head2 register_directive
+=head2 register
 
 Do some intialization.
 
 =cut
-sub register_directive {
+sub register {
     my $self = shift;
-    my $dirmod = shift;
+    my $hookmaster = shift;
     my $conf = shift;
 
-    # the shortcuts are defined in the config
+    # The shortcuts are defined in the config
+    # Each shortcut needs a callback to expand that particular shortcut
+    # and that callback is passed to the do_directives method,
+    # which in turn is called inside the callback added as a hook to the hookmaster.
     foreach my $sh (keys %{$conf})
     {
-        $dirmod->add_directive($sh => sub {
-                my $leaf = shift;
-                my $scan = shift;
-                my @params = @_;
+        my $callback = sub {
+            my $leaf = shift;
+            my $scanning = shift;
+            my @params = @_;
 
-                return $self->shortcut_expand(
-                    $conf->{$sh}->{url},
-                    $conf->{$sh}->{desc},
-                    scanning=>$scan,
-                    @params);
+            return $self->shortcut_expand(
+                $conf->{$sh}->{url},
+                $conf->{$sh}->{desc},
+                scanning=>$scanning,
+                @params);
+        };
+        $hookmaster->add_hook($sh => sub {
+                my $leaf = shift;
+                my $scanning = shift;
+
+                return $self->do_directives(
+                    leaf=>$leaf,
+                    scanning=>$scanning,
+                    directive=>$sh,
+                    call=>$callback);
             },
         );
     }
     return $self;
-} # register_directive
+} # register
 
 =head2 shortcut_expand
 

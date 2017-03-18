@@ -2,7 +2,7 @@ package Muster::Hook::Directives;
 
 =head1 NAME
 
-Muster::Hook::Directives - Muster hook for preprocessor directives
+Muster::Hook::Directives - Muster base class for preprocessor directives
 
 =head1 SYNOPSIS
 
@@ -24,91 +24,18 @@ use Carp;
 use Muster::LeafFile;
 use Muster::Hooks;
 use YAML::Any;
-use Module::Pluggable search_path => ['Muster::Directive'], instantiate => 'new';
 
-
-has directives => sub { {} };
 
 =head1 METHODS
 
 =head2 register
 
-Initialize, and register hooks.
+Initialize and register. This must be defined in a subclass.
 
 =cut
 sub register {
-    my $self = shift;
-    my $hookmaster = shift;
-    my $conf = shift;
-
-    # if there is no config, there are no directives to register
-    if (!$conf)
-    {
-        return $self;
-    }
-    # Directives are defined by Muster::Directive objects
-    # The Pluggable module will find all possible directives
-    # but the config will have defined a subset
-    my %dirmods = ();
-    foreach my $ph ($self->plugins())
-    {
-        $dirmods{ref $ph} = $ph;
-    }
-    foreach my $dm (@{$conf->{directives}})
-    {
-        my $cf = $conf->{direc_conf}->{$dm};
-        if ($dirmods{$dm})
-        {
-            $dirmods{$dm}->register_directive($self,$cf);
-        }
-        else
-        {
-            warn "Directive '$dm' does not exist";
-        }
-    }
-
-    $hookmaster->add_hook('Directives' => sub {
-            my $leaf = shift;
-            my $scanning = shift;
-            return $self->process($leaf,$scanning);
-        },
-    );
-    return $self;
-} # register
-
-=head2 add_directive
-
-Add a directive.
-
-=cut
-sub add_directive {
-    my ($self, $name, $call) = @_;
-    $self->directives->{$name} = $call;
-    return $self;
-} # add_directive
-
-=head2 process
-
-May leave the leaf untouched.
-Process (scan or modify) a leaf object.  In scanning phase, it may update the
-meta-data, in modify phase, it may update the content.  May leave the leaf
-untouched.
-
-  my $new_leaf = $self->scan($leaf,$scanning);
-
-=cut
-sub process {
-    my $self = shift;
-    my $leaf = shift;
-    my $scanning = shift;
-
-    if (!$leaf->pagetype)
-    {
-        return $leaf;
-    }
- 
-    return $self->do_directives(leaf=>$leaf, scanning=>$scanning);
-} # process
+    croak __PACKAGE__, " register must be defined in a subclass";
+}
 
 =head2 do_directives
 
@@ -122,6 +49,8 @@ sub do_directives {
 
     my $leaf = $args{leaf};
     my $scan = $args{scanning};
+    my $directive = $args{directive};
+    my $call = $args{call};
     my $page = $leaf->pagename;
     my $content = $leaf->cooked;
 
@@ -135,9 +64,9 @@ sub do_directives {
 
         if (length $escape)
         {
-            return "[[$prefix$command $params]]";
+            return "[[${prefix}${command} ${params}]]";
         }
-        elsif (exists $self->{directives}->{$command})
+        else # this already matches our directive
         {
             # Note: preserve order of params, some plugins may
             # consider it significant.
@@ -207,7 +136,7 @@ sub do_directives {
             if (! $scan) # not scanning
             {
                 $ret=eval {
-                    $self->{directives}->{$command}($leaf, $scan, @params);
+                    $call->($leaf, $scan, @params);
                 };
                 if ($@)
                 {
@@ -222,23 +151,24 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $self->{directives}->{$command}($leaf, $scan, @params);
+                    $call->($leaf, $scan, @params);
                 };
                 $ret="";
             }
             $self->{preprocessing}->{$page}--;
             return $ret;
         }
-        else # this is not a known command
-        {
-            return "[[$prefix$command $params]]";
-        }
     };
 
+    # NOTE: unlike with the IkiWiki version of directives
+    # we already know WHICH directive to search for, as it is
+    # one of the arguments passed in to do_directive.
+    # So we aren't going to have any false positives about whether
+    # this is really the command we are looking for.
     my $regex = qr{
             (\\?)		# 1: escape?
             \[\[(!)		# directive open; 2: prefix
-                    ([-\w]+)	# 3: command
+                    ($directive)	# 3: command
                     (		# 4: the parameters..
                         \s+	# Must have space if parameters present
                         (?:
