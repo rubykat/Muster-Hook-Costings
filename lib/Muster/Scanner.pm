@@ -16,7 +16,7 @@ use Mojo::Base -base;
 use Carp;
 use Muster::MetaDb;
 use Muster::LeafFile;
-use Muster::Hook;
+use Muster::Hooks;
 use File::Spec;
 use File::Find;
 use YAML::Any;
@@ -52,46 +52,11 @@ sub init {
     $self->{metadb} = Muster::MetaDb->new(%{$app->config});
     $self->{metadb}->init();
 
-    # Hooks are defined by Muster::Hook objects. The Pluggable module will find
-    # all possible hooks but the config will have defined a subset in the order
-    # we want to apply them.
-    # The way this is done is that we call "register_scan" for the hooks in that order,
-    # and while a given hook object may have more than one callback, at least
-    # all of the hooks for THAT module will come after the module before, etc.
-    $self->{hooks} = {};
-    $self->{hookorder} = [];
-    my %phooks = ();
-    foreach my $ph ($self->plugins())
-    {
-        $phooks{ref $ph} = $ph;
-    }
-    foreach my $hookmod (@{$app->config->{hooks}})
-    {
-        my $cf = $app->config->{hook_conf}->{$hookmod};
-        if ($phooks{$hookmod})
-        {
-            $phooks{$hookmod}->register_scan($self,$cf);
-        }
-        else
-        {
-            warn "Hook '$hookmod' does not exist";
-        }
-    }
+    $self->{hookmaster} = Muster::Hooks->new();
+    $self->{hookmaster}->init($app->config);
 
     return $self;
 } # init
-
-=head2 add_hook
-
-Add a scanning hook.
-
-=cut
-sub add_hook {
-    my ($self, $name, $call) = @_;
-    $self->{hooks}->{$name} = $call;
-    push @{$self->{hookorder}}, $name;
-    return $self;
-} # add_hook
 
 =head2 scan_one_page
 
@@ -282,15 +247,7 @@ sub _create_and_scan_leaf {
         croak "ERROR: leaf did not reclassify\n";
     }
 
-    # -------------------------------------------
-    # Scan
-    # -------------------------------------------
-    foreach my $hn (@{$self->{hookorder}})
-    {
-        $leaf = $self->{hooks}->{$hn}($leaf);
-    }
-
-    return $leaf;
+    return $self->{hookmaster}->run_hooks(leaf=>$leaf,scanning=>1);
 } # _create_and_scan_leaf
 
 1; # End of Muster::Scanner

@@ -22,16 +22,8 @@ Muster::Hook - Muster hook base class
       return $self;
   }
 
-  sub scan {
-    my ($self, $leaf) = @_;
-
-    # Magic here! :)
-
-    return $leaf;
-  }
-
-  sub modify {
-    my ($self, $leaf) = @_;
+  sub process {
+    my ($self, $leaf,$scanning) = @_;
 
     # Magic here! :)
 
@@ -42,69 +34,38 @@ Muster::Hook - Muster hook base class
 
 L<Muster::Hook> is an abstract base class for L<Muster> hooks.
 
-I was thinking of separating out "scanner" hooks and "modification" hooks,
-but for some, you want to have everything together (such as processing links);
-the data collected in the scanning pass will be used in the assembly pass.
+A hook will be used in both the scanning phase and the assembly phase, so it needs to be told which it is.
 
 =head1 METHODS
 
 L<Muster::Hook> inherits all methods from L<Mojo::Base> and implements
 the following new ones.
 
-=head2 register_scan
+=head2 register
 
 Initialize, and register hooks.
 
 =cut
-sub register_scan {
+sub register {
     my $self = shift;
-    my $scanner = shift;
+    my $hookmaster = shift;
     my $conf = shift;
 
     return $self;
-} # register_scan
+} # register
 
-=head2 register_modify
+=head2 process
 
-Initialize, and register hooks.
+Process (scan or modify) a leaf object.  In scanning phase, it may update the
+meta-data, in modify phase, it may update the content.  May leave the leaf
+untouched.
 
-=cut
-sub register_modify {
-    my $self = shift;
-    my $assembler = shift;
-    my $conf = shift;
-
-    return $self;
-} # register_modify
-
-=head2 scan
-
-Scans a leaf object, updating it with meta-data.
-It may also update the "content" attribute of the leaf object, in order to
-prevent earlier-scanned things being re-scanned by something else later in the
-scanning pass.
-May leave the leaf untouched.
-
-  my $new_leaf = $self->scan($leaf);
-
-=cut
-sub scan { 
-    my ($self, $leaf) = @_;
-
-    return $leaf;
-}
-
-=head2 modify
-
-Modifies the content attribute of a leaf object, as part of its processing.
-May leave the leaf untouched.
-
-  my $new_leaf = $self->modify($leaf);
+  my $new_leaf = $self->process($leaf,$scanning);
 
 =cut
 
-sub modify { 
-    my ($self, $leaf) = @_;
+sub process { 
+    my ($self, $leaf,$scanning) = @_;
 
     return $leaf;
 }

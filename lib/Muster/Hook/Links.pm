@@ -45,83 +45,71 @@ my $Url_Regexp = qr/^(?:[^:]+:\/\/|mailto:).*/i;
 
 =head1 METHODS
 
-=head2 register_scan
+=head2 register
 
-Initializes the object
+Initialize, and register hooks.
 
 =cut
-sub register_scan {
+sub register {
     my $self = shift;
-    my $scanner = shift;
+    my $hookmaster = shift;
     my $conf = shift;
 
-    $scanner->add_hook('links' => sub {
+    $hookmaster->add_hook('links' => sub {
             my $leaf = shift;
-            return $self->scan($leaf);
+            my $scanning = shift;
+            return $self->process($leaf,$scanning);
         },
     );
     return $self;
-} # register_scan
+} # register
 
-=head2 register_modify
+=head2 process
 
-Initializes the object
-
-=cut
-sub register_modify {
-    my $self = shift;
-    my $assembler = shift;
-    my $conf = shift;
-
-    $assembler->add_hook('links' => sub {
-            my $leaf = shift;
-            return $self->modify($leaf);
-        },
-    );
-    return $self;
-} # register_modify
-
-=head2 scan
-
-Scans a leaf object, updating it with meta-data.
-It may also update the "contents" attribute of the leaf object, in order to
-prevent earlier-scanned things being re-scanned by something else later in the
-scanning pass.
+Process (scan or modify) a leaf object.
+In scanning phase, it may update the meta-data,
+in modify phase, it may update the content.
 May leave the leaf untouched.
+
+  my $new_leaf = $self->process($leaf,$scanning);
 
   my $new_leaf = $self->scan($leaf);
 
 =cut
-sub scan {
+sub process {
     my $self = shift;
     my $leaf = shift;
+    my $scanning = shift;
 
     if (!$leaf->pagetype)
     {
         return $leaf;
     }
- 
-    my $content = $leaf->cooked();
-    my $page = $leaf->pagename;
-    # fudge the content by replacing {{$page}} with the pagename
-    $content =~ s!\{\{\$page\}\}!$page!g;
-    my %links = ();
 
-    while ($content =~ /(?<!\\)$Link_Regexp/g)
+    if ($scanning)
     {
-        my $link = $2;
-        my $anchor = $3;
-        if (! $self->is_externallink($page, $link, $anchor)) {
-            $links{$link}++;
+        my $content = $leaf->cooked();
+        my $page = $leaf->pagename;
+        # fudge the content by replacing {{$page}} with the pagename
+        $content =~ s!\{\{\$page\}\}!$page!g;
+        my %links = ();
+
+        while ($content =~ /(?<!\\)$Link_Regexp/g)
+        {
+            my $link = $2;
+            my $anchor = $3;
+            if (! $self->is_externallink($page, $link, $anchor)) {
+                $links{$link}++;
+            }
+        }
+        my @links = sort keys %links;
+        if (scalar @links)
+        {
+            $leaf->{meta}->{links} = \@links;
         }
     }
-    my @links = sort keys %links;
-    if (scalar @links)
-    {
-        $leaf->{meta}->{links} = \@links;
-    }
     return $leaf;
-} # scan
+} # process
 
 =head2 modify
 

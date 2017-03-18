@@ -72,7 +72,7 @@ Register
 =cut
 sub register_directive {
     my $self = shift;
-    my $scanner = shift;
+    my $hookmaster = shift;
     my $conf = shift;
 
     return $self;

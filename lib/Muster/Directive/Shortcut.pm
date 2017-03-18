@@ -50,6 +50,7 @@ sub register_directive {
                 return $self->shortcut_expand(
                     $conf->{$sh}->{url},
                     $conf->{$sh}->{desc},
+                    scanning=>$scan,
                     @params);
             },
         );

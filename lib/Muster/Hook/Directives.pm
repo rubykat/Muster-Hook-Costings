@@ -22,7 +22,7 @@ As with IkiWiki, directives are prefixed with "[[!I<name>"
 use Mojo::Base 'Muster::Hook';
 use Carp;
 use Muster::LeafFile;
-use Muster::Scanner;
+use Muster::Hooks;
 use YAML::Any;
 use Module::Pluggable search_path => ['Muster::Directive'], instantiate => 'new';
 
@@ -31,14 +31,14 @@ has directives => sub { {} };
 
 =head1 METHODS
 
-=head2 register_scan
+=head2 register
 
 Initialize, and register hooks.
 
 =cut
-sub register_scan {
+sub register {
     my $self = shift;
-    my $scanner = shift;
+    my $hookmaster = shift;
     my $conf = shift;
 
     # if there is no config, there are no directives to register
@@ -67,17 +67,18 @@ sub register_scan {
         }
     }
 
-    $scanner->add_hook('Directives' => sub {
+    $hookmaster->add_hook('Directives' => sub {
             my $leaf = shift;
-            return $self->scan($leaf);
+            my $scanning = shift;
+            return $self->process($leaf,$scanning);
         },
     );
     return $self;
-} # register_scan
+} # register
 
 =head2 add_directive
 
-Add a scanning hook.
+Add a directive.
 
 =cut
 sub add_directive {
@@ -86,92 +87,28 @@ sub add_directive {
     return $self;
 } # add_directive
 
-=head2 register_modify
+=head2 process
 
-Initialize, and register hooks.
-
-=cut
-sub register_modify {
-    my $self = shift;
-    my $assembler = shift;
-    my $conf = shift;
-
-    # if there is no config, there are no directives to register
-    if (!$conf)
-    {
-        return $self;
-    }
-    # Directives are defined by Muster::Directive objects
-    # The Pluggable module will find all possible directives
-    # but the config will have defined a subset
-    $self->{directives} = {};
-    my %dirmods = ();
-    foreach my $ph ($self->plugins())
-    {
-        $dirmods{ref $ph} = $ph;
-        $ph->register_directive($assembler);
-    }
-    foreach my $dm (@{$conf->{directives}})
-    {
-        my $cf = $conf->{direc_conf}->{$dm};
-        if ($dirmods{$dm})
-        {
-            $dirmods{$dm}->register_directive($self,$cf);
-        }
-        else
-        {
-            warn "Directive '$dm' does not exist";
-        }
-    }
-
-    $assembler->add_hook('Directives' => sub {
-            my $leaf = shift;
-            return $self->modify($leaf);
-        },
-    );
-    return $self;
-} # register_modify
-
-=head2 scan
-
-Scans a leaf object, updating it with meta-data.
-It may also update the "contents" attribute of the leaf object, in order to
-prevent earlier-scanned things being re-scanned by something else later in the
-scanning pass.
 May leave the leaf untouched.
+Process (scan or modify) a leaf object.  In scanning phase, it may update the
+meta-data, in modify phase, it may update the content.  May leave the leaf
+untouched.
 
-  my $new_leaf = $self->scan($leaf);
+  my $new_leaf = $self->scan($leaf,$scanning);
 
 =cut
-sub scan {
+sub process {
     my $self = shift;
     my $leaf = shift;
+    my $scanning = shift;
 
     if (!$leaf->pagetype)
     {
         return $leaf;
     }
  
-    return $self->do_directives(leaf=>$leaf, scan=>1);
-} # scan
-
-=head2 modify
-
-Modifies the "contents" attribute of a leaf object, as part of its processing.
-
-  my $new_leaf = $self->modify($leaf);
-
-=cut
-sub modify {
-    my $self = shift;
-    my $leaf = shift;
-
-    if (!$leaf->pagetype)
-    {
-        return $leaf;
-    }
-    return $self->do_directives(leaf=>$leaf, scan=>0);
-} # modify
+    return $self->do_directives(leaf=>$leaf, scanning=>$scanning);
+} # process
 
 =head2 do_directives
 
@@ -184,7 +121,7 @@ sub do_directives {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scan = $args{scan};
+    my $scan = $args{scanning};
     my $page = $leaf->pagename;
     my $content = $leaf->cooked;
 
@@ -263,7 +200,7 @@ sub do_directives {
                 # other pages that preprocess them, etc.
                 return "[[!$command <span class=\"error\">".
                         sprintf("preprocessing loop detected on %s at depth %i",
-                            $page, $self->{scanner}->{preprocessing}->{$page}).
+                            $page, $self->{preprocessing}->{$page}).
                         "</span>]]";
             }
             my $ret;
