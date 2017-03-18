@@ -135,10 +135,10 @@ sub startup {
 
     $r->get('/' => $do_page);
     $r->get('/pagelist' => $do_pagelist);
-    $r->get('/debug' => $do_debug);
-    $r->get('/debug/*cpath' => $do_debug);
-    $r->get('/meta/*cpath' => $do_meta);
-    $r->get('/src/*cpath' => $do_source);
+    $r->get('/_debug' => $do_debug);
+    $r->get('/_debug/*cpath' => $do_debug);
+    $r->get('/_meta/*cpath' => $do_meta);
+    $r->get('/_src/*cpath' => $do_source);
     # anything else should be a page or file
     $r->get('/*cpath' => $do_page);
 }
