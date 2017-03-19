@@ -227,52 +227,54 @@ sub page_exists {
     return $total > 0;
 } # page_exists
 
-=head2 find_pagename
+=head2 bestlink
 
-Does this page exist in the database?
-This does a case-insensitive check if there isn't an exact match.
-Returns the real pagename if it is found, otherwise empty string.
+Which page does the given link match, when linked from the given page?
+
+my $linkedpage = $self->bestlink($page,$link);
 
 =cut
 
-sub find_pagename {
+sub bestlink {
     my $self = shift;
     my $page = shift;
+    my $link = shift;
 
     if (!$self->_connect())
     {
         return undef;
     }
-    if ($self->page_exists($page))
-    {
-        return $page;
-    }
-
-    return unless $self->{dbh};
     my $dbh = $self->{dbh};
 
-    # set both the column and the query to uppercase
-    my $q = "SELECT page FROM pagefiles WHERE UPPER(page) = ?;";
-    my $upper_page = uc($page);
+    # code based on IkiWiki
+    my $cwd=$page;
+    if ($link=~s/^\/+//)
+    {
+        # absolute links
+        $cwd="";
+    }
+    $link=~s/\/$//;
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($upper_page);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my $realpage = '';
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        $realpage = $row[0];
-    }
-    return $realpage;
-} # find_pagename
+    do {
+        my $l=$cwd;
+        $l.="/" if length $l;
+        $l.=$link;
+
+        my $page_exists = $self->page_exists($l);
+        if ($page_exists)
+        {
+            return $l;
+        }
+        else
+        {
+            my $realpage = $self->_find_pagename($l);
+            return $realpage if $realpage;
+        }
+    } while $cwd=~s{/?[^/]+$}{};
+
+    # broken link
+    return "";
+} # bestlink
 
 =head1 Helper Functions
 
@@ -991,6 +993,53 @@ sub _total_pages {
     }
     return $total;
 } # _total_pages
+
+=head2 _find_pagename
+
+Does this page exist in the database?
+This does a case-insensitive check if there isn't an exact match.
+Returns the real pagename if it is found, otherwise empty string.
+
+=cut
+
+sub _find_pagename {
+    my $self = shift;
+    my $page = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+    if ($self->page_exists($page))
+    {
+        return $page;
+    }
+
+    return unless $self->{dbh};
+    my $dbh = $self->{dbh};
+
+    # set both the column and the query to uppercase
+    my $q = "SELECT page FROM pagefiles WHERE UPPER(page) = ?;";
+    my $upper_page = uc($page);
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute($upper_page);
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my $realpage = '';
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        $realpage = $row[0];
+    }
+    return $realpage;
+} # _find_pagename
 
 =head2 _add_page_data
 

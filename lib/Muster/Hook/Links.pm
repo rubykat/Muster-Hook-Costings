@@ -123,7 +123,7 @@ sub process {
 				: $self->is_externallink($page, $3, $4)
 					? $self->externallink($3, $4, $2)
 					: $self->htmllink($page, $destpage, $self->linkpage($3),
-						anchor => $4, linktext => pagetitle($2)))
+						anchor => $4, linktext => $2))
 			: ( $1 
 				? "[[$3".(defined $4 ? "#$4" : "")."]]"
 				: $self->is_externallink($page, $3, $4)
@@ -295,33 +295,7 @@ sub bestlink {
     my $page= $args{page};
     my $link= $args{link};
 
-    my $cwd=$page;
-    if ($link=~s/^\/+//)
-    {
-        # absolute links
-        $cwd="";
-    }
-    $link=~s/\/$//;
-
-    do {
-        my $l=$cwd;
-        $l.="/" if length $l;
-        $l.=$link;
-
-        my $page_exists = $self->{metadb}->page_exists($l);
-        if ($page_exists)
-        {
-            return $l;
-        }
-        else
-        {
-            my $realpage = $self->{metadb}->find_pagename($l);
-            return $realpage if $realpage;
-        }
-    } while $cwd=~s{/?[^/]+$}{};
-
-    #print STDERR "warning: page $page, broken link: $link\n";
-    return "";
+    return $self->{metadb}->bestlink($page,$link);
 } # bestlink
 
 =head2 pagelink
