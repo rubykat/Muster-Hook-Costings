@@ -50,6 +50,7 @@ sub register {
             return $self->do_directives(
                 leaf=>$leaf,
                 scanning=>$scanning,
+                no_scan=>0,
                 directive=>'meta',
                 call=>$callback);
         },

@@ -48,7 +48,8 @@ sub do_directives {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scan = $args{scanning};
+    my $scanning = $args{scanning};
+    my $no_scan = $args{no_scan};
     my $directive = $args{directive};
     my $call = $args{call};
 
@@ -71,6 +72,11 @@ sub do_directives {
         if (length $escape)
         {
             return "[[${prefix}${command} ${params}]]";
+        }
+        elsif ($scanning and $no_scan)
+        {
+            # save time and return immediately
+            return "";
         }
         else # this already matches our directive
         {
@@ -139,10 +145,10 @@ sub do_directives {
                         "</span>]]";
             }
             my $ret;
-            if (! $scan) # not scanning
+            if (! $scanning) # not scanning
             {
                 $ret=eval {
-                    $call->($leaf, $scan, @params);
+                    $call->($leaf, $scanning, @params);
                 };
                 if ($@)
                 {
@@ -157,7 +163,7 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $call->($leaf, $scan, @params);
+                    $call->($leaf, $scanning, @params);
                 };
                 $ret="";
             }

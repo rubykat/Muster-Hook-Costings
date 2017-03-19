@@ -45,6 +45,7 @@ sub register {
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{url},
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{desc},
                 scanning=>$scanning,
+                no_scan=>1,
                 @params);
         };
         $hookmaster->add_hook($sh => sub {
