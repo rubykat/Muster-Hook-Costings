@@ -135,6 +135,26 @@ sub page_or_file_info {
     return $self->_get_page_meta($pagename);
 } # page_or_file_info
 
+=head2 query
+
+Do a freeform query. This returns a reference to the first column of results.
+
+    my $results = $self->query($query);
+
+=cut
+
+sub query {
+    my $self = shift;
+    my $query = shift;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    return $self->_do_one_col_query($query);
+} # query
+
 =head2 global_info
 
 Get the global info (plugin-related, not page-related).
@@ -583,26 +603,9 @@ sub _get_all_pagefiles {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT page FROM pagefiles ORDER BY page;";
+    my $pages = $self->_do_one_col_query("SELECT page FROM pagefiles ORDER BY page;");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute();
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @pagenames = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @pagenames, $row[0];
-    }
-
-    return @pagenames;
+    return @{$pages};
 } # _get_all_pagefiles
 
 =head2 _get_all_pagenames
@@ -618,26 +621,9 @@ sub _get_all_pagenames {
     my %args = @_;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT page FROM pagefiles WHERE pagetype != '' ORDER BY page;";
+    my $pages = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE pagetype != '' ORDER BY page;");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute();
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @pagenames = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @pagenames, $row[0];
-    }
-
-    return @pagenames;
+    return @{$pages};
 } # _get_all_pagenames
 
 =head2 _get_all_fieldnames
@@ -652,26 +638,9 @@ sub _get_all_fieldnames {
     my $self = shift;
 
     my $dbh = $self->{dbh};
-    my $q = "SELECT DISTINCT field FROM deepfields ORDER BY field;";
+    my $fields = $self->_do_one_col_query("SELECT DISTINCT field FROM deepfields ORDER BY field;");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute();
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @fieldnames = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @fieldnames, $row[0];
-    }
-
-    return @fieldnames;
+    return @{$fields};
 } # _get_all_fieldnames
 
 =head2 _get_fields_for_page
@@ -726,26 +695,9 @@ sub _get_children_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype != "";';
+    my $children = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND pagetype != '';");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($pagename);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @children = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @children, $row[0];
-    }
-
-    return \@children;
+    return $children;
 } # _get_children_for_page
 
 =head2 _get_attachments_for_page
@@ -762,26 +714,9 @@ sub _get_attachments_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $q = 'SELECT page FROM pagefiles WHERE parent_page = ? AND pagetype = "";';
+    my $attachments = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND pagetype = '';");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($pagename);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @attachments = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @attachments, $row[0];
-    }
-
-    return \@attachments;
+    return $attachments;
 } # _get_attachments_for_page
 
 =head2 _get_links_for_page
@@ -798,26 +733,9 @@ sub _get_links_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $q = 'SELECT links_to FROM links WHERE page = ?;';
+    my $links = $self->_do_one_col_query("SELECT links_to FROM links WHERE page = '$pagename'");
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
-    my $ret = $sth->execute($pagename);
-    if (!$ret)
-    {
-        croak "FAILED to execute '$q' $DBI::errstr";
-    }
-    my @links = ();
-    my @row;
-    while (@row = $sth->fetchrow_array)
-    {
-        push @links, $row[0];
-    }
-
-    return \@links;
+    return $links;
 } # _get_links_for_page
 
 =head2 _get_page_meta
@@ -925,6 +843,45 @@ sub _get_globalinfo {
 
     return \%globalinfo;
 } # _get_globalinfo
+
+=head2 _do_one_col_query
+
+Do a SELECT query, and return the first column of results.
+This is a freeform query, so the caller must be careful to formulate it correctly.
+
+my $results = $self->_do_one_col_query($query);
+
+=cut
+
+sub _do_one_col_query {
+    my $self = shift;
+    my $q = shift;
+
+    if ($q !~ /^SELECT /)
+    {
+        # bad boy! Not a SELECT.
+        return undef;
+    }
+    my $dbh = $self->{dbh};
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @results = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @results, $row[0];
+    }
+    return \@results;
+} # _do_one_col_query
 
 =head2 _total_pagefiles
 
