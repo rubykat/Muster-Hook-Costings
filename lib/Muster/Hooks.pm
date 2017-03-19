@@ -52,10 +52,9 @@ sub init {
     }
     foreach my $hookmod (@{$config->{hooks}})
     {
-        my $cf = $config->{hook_conf}->{$hookmod};
         if ($phooks{$hookmod})
         {
-            $phooks{$hookmod}->register($self,$cf);
+            $phooks{$hookmod}->register($self,$config);
         }
         else
         {

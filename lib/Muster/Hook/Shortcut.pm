@@ -4,6 +4,7 @@ use Muster::LeafFile;
 use Muster::Hooks;
 
 use Carp 'croak';
+use YAML::Any;
 
 =encoding utf8
 
@@ -27,13 +28,13 @@ Do some intialization.
 sub register {
     my $self = shift;
     my $hookmaster = shift;
-    my $conf = shift;
+    my $config = shift;
 
     # The shortcuts are defined in the config
     # Each shortcut needs a callback to expand that particular shortcut
     # and that callback is passed to the do_directives method,
     # which in turn is called inside the callback added as a hook to the hookmaster.
-    foreach my $sh (keys %{$conf})
+    foreach my $sh (keys %{$config->{hook_conf}->{'Muster::Hook::Shortcut'}})
     {
         my $callback = sub {
             my $leaf = shift;
@@ -41,8 +42,8 @@ sub register {
             my @params = @_;
 
             return $self->shortcut_expand(
-                $conf->{$sh}->{url},
-                $conf->{$sh}->{desc},
+                $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{url},
+                $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{desc},
                 scanning=>$scanning,
                 @params);
         };
