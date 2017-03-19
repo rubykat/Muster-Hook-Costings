@@ -61,9 +61,9 @@ sub register {
     $self->{metadb} = $hookmaster->{metadb};
 
     $hookmaster->add_hook('links' => sub {
-            my $leaf = shift;
-            my $scanning = shift;
-            return $self->process($leaf,$scanning);
+            my %args = @_;
+
+            return $self->process(%args);
         },
     );
     return $self;
@@ -83,8 +83,10 @@ May leave the leaf untouched.
 =cut
 sub process {
     my $self = shift;
-    my $leaf = shift;
-    my $scanning = shift;
+    my %args = @_;
+
+    my $leaf = $args{leaf};
+    my $scanning = $args{scanning};
 
     if (!$leaf->pagetype)
     {

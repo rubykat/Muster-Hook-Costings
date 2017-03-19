@@ -60,12 +60,16 @@ Process (scan or modify) a leaf object.  In scanning phase, it may update the
 meta-data, in modify phase, it may update the content.  May leave the leaf
 untouched.
 
-  my $new_leaf = $self->process($leaf,$scanning);
+  my $new_leaf = $self->process(leaf=>$leaf,scanning=>$scanning);
 
 =cut
 
 sub process { 
-    my ($self, $leaf,$scanning) = @_;
+    my $self = shift;
+    my %args = @_;
+
+    my $leaf = $args{leaf};
+    my $scanning = $args{scanning};
 
     return $leaf;
 }

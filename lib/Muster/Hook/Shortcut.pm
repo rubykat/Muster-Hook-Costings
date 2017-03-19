@@ -37,26 +37,26 @@ sub register {
     foreach my $sh (keys %{$config->{hook_conf}->{'Muster::Hook::Shortcut'}})
     {
         my $callback = sub {
-            my $leaf = shift;
-            my $scanning = shift;
-            my @params = @_;
+            my %args = @_;
+            my $leaf = $args{leaf};
+            my $scanning = $args{scanning};
+            my @params = @{$args{params}};
 
             return $self->shortcut_expand(
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{url},
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{desc},
                 scanning=>$scanning,
-                no_scan=>1,
+                leaf=>$leaf,
                 @params);
         };
         $hookmaster->add_hook($sh => sub {
-                my $leaf = shift;
-                my $scanning = shift;
+                my %args = @_;
 
                 return $self->do_directives(
-                    leaf=>$leaf,
-                    scanning=>$scanning,
                     directive=>$sh,
-                    call=>$callback);
+                    no_scan=>1,
+                    call=>$callback,
+                    %args);
             },
         );
     }

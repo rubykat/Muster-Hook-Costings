@@ -92,11 +92,10 @@ sub run_hooks {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
 
     foreach my $hn (@{$self->{hookorder}})
     {
-        $leaf = $self->{hooks}->{$hn}($leaf,$scanning);
+        $leaf = $self->{hooks}->{$hn}(%args);
     }
 
     return $leaf;

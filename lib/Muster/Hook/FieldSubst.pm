@@ -40,9 +40,9 @@ sub register {
     $self->{metadb} = $hookmaster->{metadb};
 
     $hookmaster->add_hook('fieldsubst' => sub {
-            my $leaf = shift;
-            my $scanning = shift;
-            return $self->process($leaf,$scanning);
+            my %args = @_;
+
+            return $self->process(%args);
         },
     );
     return $self;
@@ -62,8 +62,10 @@ In either case, this expects the leaf meta-data to be populated.
 =cut
 sub process {
     my $self = shift;
-    my $leaf = shift;
-    my $scanning = shift;
+    my %args = @_;
+
+    my $leaf = $args{leaf};
+    my $scanning = $args{scanning};
 
     if (!$leaf->pagetype)
     {

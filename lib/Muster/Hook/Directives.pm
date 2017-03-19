@@ -148,7 +148,7 @@ sub do_directives {
             if (! $scanning) # not scanning
             {
                 $ret=eval {
-                    $call->($leaf, $scanning, @params);
+                    $call->(leaf=>$leaf, scanning=>$scanning, params=>\@params);
                 };
                 if ($@)
                 {
@@ -163,7 +163,7 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $call->($leaf, $scanning, @params);
+                    $call->(leaf=>$leaf, scanning=>$scanning, params=>\@params);
                 };
                 $ret="";
             }

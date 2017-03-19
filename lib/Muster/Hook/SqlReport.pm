@@ -61,22 +61,18 @@ sub register {
     }
 
     my $callback = sub {
-        my $leaf = shift;
-        my $scanning = shift;
-        my %params = @_;
+        my %args = @_;
 
-        return $self->process($leaf,$scanning,%params);
+        return $self->process(%args);
     };
     $hookmaster->add_hook('sqlreport' => sub {
-            my $leaf = shift;
-            my $scanning = shift;
+            my %args = @_;
 
             return $self->do_directives(
-                leaf=>$leaf,
-                scanning=>$scanning,
                 no_scan=>1,
                 directive=>'sqlreport',
-                call=>$callback);
+                call=>$callback,
+                %args);
         },
     );
     return $self;
@@ -84,9 +80,12 @@ sub register {
 
 sub process {
     my $self = shift;
-    my $leaf = shift;
-    my $scanning = shift;
-    my %params=@_;
+    my %args = @_;
+
+    my $leaf = $args{leaf};
+    my $scanning = $args{scanning};
+    my @p = @{$args{params}};
+    my %params = @p;
 
     my $page = $leaf->pagename;
     foreach my $p (qw(database table where))

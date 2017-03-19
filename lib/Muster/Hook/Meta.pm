@@ -30,9 +30,12 @@ sub register {
     my $conf = shift;
 
     my $callback = sub {
-        my $leaf = shift;
-        my $scanning = shift;
-        my %params = @_;
+        my %args = @_;
+
+        my $leaf = $args{leaf};
+        my $scanning = $args{scanning};
+        my @p = @{$args{params}};
+        my %params = @p;
 
         if ($scanning)
         {
@@ -44,15 +47,14 @@ sub register {
         return "";
     };
     $hookmaster->add_hook('meta' => sub {
-            my $leaf = shift;
-            my $scanning = shift;
+            my %args = @_;
 
             return $self->do_directives(
-                leaf=>$leaf,
-                scanning=>$scanning,
                 no_scan=>0,
                 directive=>'meta',
-                call=>$callback);
+                call=>$callback,
+                %args,
+            );
         },
     );
     return $self;
