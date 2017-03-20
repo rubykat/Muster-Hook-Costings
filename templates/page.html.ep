@@ -7,6 +7,7 @@
 % end
 % content_for 'recto' => begin
 <p class="total"><%= muster_total_pages %> pages</p>
+<%== foil_referrer %>
 <%== foil_theme_selector %>
 <%== muster_page_attachments_list %>
 % end

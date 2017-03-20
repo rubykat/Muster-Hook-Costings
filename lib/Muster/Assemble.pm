@@ -99,6 +99,7 @@ sub serve_page {
         return;
     }
 
+    $c->stash('title' => $leaf->title);
     $c->stash('pagename' => $pagename);
     $c->stash('content' => $html);
     $c->render(template => 'page');
@@ -130,6 +131,7 @@ sub serve_meta {
 
     my $html = "<pre>\n" . Dump($info) . "\n</pre>\n";
 
+    $c->stash('title' => $info->{title});
     $c->stash('pagename' => $pagename);
     $c->stash('content' => $html);
     $c->render(template => 'page');
@@ -182,6 +184,7 @@ sub serve_source {
         return;
     }
 
+    $c->stash('title' => $leaf->title);
     $c->stash('pagename' => $pagename);
     $c->stash('content' => "<pre>$content</pre>");
     $c->render(template => 'page');
