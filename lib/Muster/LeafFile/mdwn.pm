@@ -24,7 +24,7 @@ use Mojo::Base 'Muster::LeafFile';
 
 use Carp;
 use Mojo::Util      'decode';
-use Text::MultiMarkdown  'markdown';
+use Text::Markdown::Discount 'markdown';
 use Encode qw{encode};
 use Hash::Merge;
 # use a fast YAML
