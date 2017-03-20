@@ -45,6 +45,35 @@ my $Link_Regexp = qr{
 my $Email_Regexp = qr/^.+@.+\..+$/;
 my $Url_Regexp = qr/^(?:[^:]+:\/\/|mailto:).*/i;
 
+=head1 CLASS FUNCTIONS
+
+=head2 pagelink
+
+The page as if it were a html link.
+This does things like add a trailing slash if it is needed.
+
+=cut
+sub pagelink {
+    my $link = shift;
+    my $info = shift;
+
+    if (!defined $info)
+    {
+        return $link;
+    }
+    # if this is an absolute link, needs a slash in front of it
+    if (($link eq $info->{page}) or ($link eq $info->{pagename}))
+    {
+        $link = "/$link";
+    }
+    # if this is a page, it needs a slash added to it
+    if ($info->{pagetype})
+    {
+        $link .= '/';
+    }
+    return $link;
+} # pagelink
+
 =head1 METHODS
 
 =head2 register
@@ -137,20 +166,6 @@ sub process {
     }
     return $leaf;
 } # process
-
-=head2 modify
-
-Modifies the "contents" attribute of a leaf object, as part of its processing.
-
-  my $new_leaf = $self->modify($leaf);
-
-=cut
-sub modify {
-    my $self = shift;
-    my $leaf = shift;
-
-    return $leaf;
-} # modify
 
 sub is_externallink {
     my $self = shift;
@@ -269,7 +284,7 @@ sub htmllink {
 #    }
 
     $bestlink=File::Spec->abs2rel($bestlink, $page);
-    $bestlink=$self->pagelink($bestlink, $bl_info);
+    $bestlink=pagelink($bestlink, $bl_info);
 
     if (defined $opts{anchor}) {
         $bestlink.="#".$opts{anchor};
@@ -299,29 +314,5 @@ sub bestlink {
 
     return $self->{metadb}->bestlink($page,$link);
 } # bestlink
-
-=head2 pagelink
-
-The page as if it were a html link.
-This does things like add a trailing slash if it is needed.
-
-=cut
-sub pagelink {
-    my $self = shift;
-    my $link = shift;
-    my $info = shift;
-
-    # this is a page, it needs a slash added to it
-    if ($info->{pagetype})
-    {
-        $link .= '/';
-    }
-    # this is an absolute link, needs a slash in front of it
-    if ($link eq $info->{pagename})
-    {
-        $link = "/$link";
-    }
-    return $link;
-} # pagelink
 
 1;
