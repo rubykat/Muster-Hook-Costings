@@ -230,6 +230,16 @@ sub _find_side_page {
     my $current_page = $args{current_page};
     my $side_page = $args{side_page};
     my $cp_info = $self->{metadb}->page_or_file_info($current_page);
+
+    # find a "local" side-page first, which has priority
+    # This will have an extra '_' at the front of it.
+    # This can only be in the same folder as the current page.
+    my $local_sp = $cp_info->{parent_page} . '/_' . $side_page;
+    if ($self->{metadb}->page_exists($local_sp))
+    {
+        return $local_sp;
+    }
+
     my @bits = split('/', $current_page);
     my $found_page = '';
     do {
