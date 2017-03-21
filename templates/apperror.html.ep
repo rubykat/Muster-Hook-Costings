@@ -1,9 +1,10 @@
 % layout 'foil';
 % content_for 'verso' => begin
-<nav><%== muster_db_related_list %></nav>
+<%== muster_sidebar %>
 % end
 % content_for 'recto' => begin
 <%== foil_theme_selector %>
+<%== muster_rightbar %>
 % end
 <h1>Error: <%= param('db') %></h1>
 <%== $errormsg %>

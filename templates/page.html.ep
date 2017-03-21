@@ -3,12 +3,13 @@
 <link rel="stylesheet" href="<%= url_for('/css') %>/muster.css" type="text/css" />
 % end
 % content_for 'verso' => begin
-<nav><%== muster_page_related_list %></nav>
+<%== muster_sidebar %>
 % end
 % content_for 'recto' => begin
-<p class="total"><%= muster_total_pages %> pages</p>
 <%== foil_referrer %>
 <%== foil_theme_selector %>
-<%== muster_page_attachments_list %>
+<%== muster_rightbar %>
 % end
+<%== muster_header %>
 <%== $content %>
+<%== muster_footer %>

@@ -1,0 +1,11 @@
+[[!pmap
+map_type=nav
+where="""
+pagetype != ''
+AND name NOT GLOB '_*'
+AND (parent_page = '{{$page}}'
+OR parent_page IN
+(SELECT parent_page FROM pagefiles WHERE page = '{{$page}}')
+)
+"""
+]]

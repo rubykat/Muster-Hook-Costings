@@ -1,0 +1,8 @@
+[[!pmap
+map_type=nav
+where="""
+parent_page = '{{$page}}'
+AND pagetype = ''
+AND name NOT GLOB '_*'
+"""
+]]

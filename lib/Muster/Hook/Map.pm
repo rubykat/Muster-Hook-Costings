@@ -90,9 +90,11 @@ sub process {
     delete $params{show};
     my $map_type = (defined $params{map_type} ? $params{map_type} : '');
 
-    if (! exists $params{pages} and ! exists $params{pagenames})
+    if (! exists $params{pages}
+            and ! exists $params{pagenames}
+            and ! exists $params{where})
     {
-	return "ERROR: missing pages/pagenames parameter";
+	return "ERROR: missing pages/pagenames/where parameter";
     }
     if ($scanning)
     {
@@ -109,6 +111,11 @@ sub process {
     {
 	@matching_pages =
 	    map { $self->{metadb}->bestlink($pagename, $_) } split ' ', $params{pagenames};
+    }
+    elsif (exists $params{where})
+    {
+        my $pages = $self->{metadb}->query("SELECT page FROM pagefiles WHERE " . $params{where});
+        @matching_pages = @{$pages} if $pages;
     }
 
     my $result = '';
@@ -183,7 +190,7 @@ sub process {
         # not set, then set the map_type to 'list'
         $map_type = 'list' if (!$map_type and $min_depth == $max_depth);
 
-        $result = ($map_type eq 'nav'
+        my $tree = ($map_type eq 'nav'
             ? HTML::LinkList::nav_tree(paths=>\@link_list,
                 preserve_paths=>1,
                 labels=>\%page_labels,
@@ -207,6 +214,11 @@ sub process {
                         %params)
                 )));
 
+        $result = ($params{no_div} 
+            ? $tree
+            : ($map_type eq 'nav'
+                ? "<nav>$tree</nav>\n"
+                : "<div class='map'>$tree</div>\n"));
     } # else pmap
 
     return $result;
