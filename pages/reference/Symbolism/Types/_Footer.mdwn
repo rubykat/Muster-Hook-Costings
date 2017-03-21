@@ -1,0 +1,20 @@
+[[!sqlreport
+database=ikiwiki
+table=pagefields
+where="""
+parent_page = 'reference/Symbolism/Symbols'
+AND (symboltype = '{{$name}}'
+OR symboltype LIKE '%|{{$name}}'
+OR symboltype LIKE '%|{{$name}}|%'
+OR symboltype LIKE '{{$name}}|%')
+"""
+sort_by="page"
+layout=list
+row_template="""
+<li><b>[[{$page}]]</b>
+{?qualities [$qualities:items_wlink_qualities]}
+{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
+<em>{$symboltype:items_wlink_types}</em>
+<br/><small>{$description}</small>
+</li>
+"""]]

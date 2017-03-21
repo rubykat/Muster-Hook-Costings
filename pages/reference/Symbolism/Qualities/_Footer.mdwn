@@ -1,0 +1,74 @@
+**Other Side:** {{$OtherSide}}
+**Opposite:** {{$Opposite}}
+
+**See Also:** {{$SeeAlso}}
+
+[[!sqlreport
+database=ikiwiki
+table=pagefields
+where="""
+parent_page = 'reference/Symbolism/Qualities'
+AND (seealso = '{{$name}}'
+OR seealso LIKE '%|{{$name}}'
+OR seealso LIKE '%|{{$name}}|%'
+OR seealso LIKE '{{$name}}|%')
+"""
+sort_by="page"
+layout=list report_style=compact
+row_template="""
+<li><b>[[{$page}]]</b>
+<small>{$description}</small></li>
+"""]]
+----
+
+[[!sqlreport
+database=ikiwiki
+table=pagefields
+where="""
+parent_page = 'reference/Symbolism/Symbols'
+AND (qualities = '{{$name}}'
+OR qualities LIKE '%|{{$name}}'
+OR qualities LIKE '%|{{$name}}|%'
+OR qualities LIKE '{{$name}}|%')
+"""
+sort_by="page"
+layout=list
+report_style=bare
+ltemplate="""
+<b>Symbols:</b>
+
+CONTENTS
+"""
+row_template="""
+<li><b>[[{$page}]]</b>
+{?qualities [$qualities:items_wlink_qualities]}
+{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
+<br/><small>{$description}</small>
+</li>
+"""]]
+
+[[!sqlreport
+database=ikiwiki
+table=pagefields
+where="""
+parent_page = 'reference/Symbolism/Being'
+AND (qualities = '{{$name}}'
+OR qualities LIKE '%|{{$name}}'
+OR qualities LIKE '%|{{$name}}|%'
+OR qualities LIKE '{{$name}}|%')
+"""
+sort_by="page"
+layout=list
+report_style=bare
+ltemplate="""
+<b>Beings:</b>
+
+CONTENTS
+"""
+row_template="""
+<li><b>[[{$page}]]</b>
+{?qualities [$qualities:items_wlink_qualities]}
+{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
+<br/><small>{$description}</small>
+</li>
+"""]]

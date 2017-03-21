@@ -1,0 +1,34 @@
+#{{$title}}
+{{$description}}
+
+##Tasks
+
+[[!sqlreport
+database=tasks
+table=writing_tasks
+where="""
+full_project = '{{$name}}'
+"""
+sort_by="end -priorityval id"
+layout=list
+row_template="""
+<li><strong>({$id})</strong>
+{?proj_type [$proj_type]}
+[[writing/projects/done/{$full_project}]]
+{$status}
+{?priority [$priority]}
+{?urgency ([$urgency])}
+{?wait Wait:[$waitdate]}
+{?due Due:[$duedate]}
+{?start Start:[$startdate]}
+{?end End:[$enddate]}
+{?tags ([$tags:items_wlink_tag])}
+<br/><em>{$description}
+</em>
+</li>
+"""]]
+
+##Notes
+
+[[!map pages="{{$page}}/* and !{{$page}}/*/*"]]
+

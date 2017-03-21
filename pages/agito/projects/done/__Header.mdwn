@@ -1,0 +1,33 @@
+#{{$title}}
+{{$description}}
+
+##Tasks
+
+[[!sqlreport
+database=tasks
+table=completed_tasks
+where="""
+full_project = '{{$name}}'
+and status = 'completed'
+"""
+sort_by="-priorityval end id"
+layout=list
+row_template="""
+<li><strong>({$id})</strong>
+{?proj_type [$proj_type]}
+[[agito/projects/done/{$full_project}]]
+{$status}
+{?priority [$priority]}
+{?urgency ([$urgency])}
+{?wait Wait:[$waitdate]}
+{?due Due:[$duedate]}
+{?start Start:[$startdate]}
+{?end End:[$enddate]}
+{?tags ([$tags:items_wlink_tag])}
+<br/><em>{$description}
+{?annotations :: [$annotations]}
+</em>
+</li>
+"""]]
+
+----

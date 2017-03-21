@@ -1,0 +1,42 @@
+#{{$title}}
+{{$description}}
+
+**Symbol Type:** {{$SymbolType}}
+**Being:** {{$Being}}
+**Qualities:** {{$Qualities}}
+**Has Qualities Of:** {{$HasQualitiesOf}}
+
+[[!sqlreport database=ikiwiki table=pagefields
+where="""
+page = 'reference/Symbolism/Symbols/<TMPL_VAR NAME="SeeAlso">'
+"""
+layout=none report_style=bare
+row_template="""
+<b>[[{$page}]]</b>
+{?qualities [$qualities:items_wlink_qualities]}
+{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
+<small>{$description}</small>
+"""]]
+
+[[!sqlreport
+database=ikiwiki
+table=pagefields
+where="""
+parent_page = 'reference/Symbolism/Symbols'
+AND (seealso = '{{$name}}'
+OR seealso LIKE '%|{{$name}}'
+OR seealso LIKE '%|{{$name}}|%'
+OR seealso LIKE '{{$name}}|%'
+OR hasqualitiesof = '{{$name}}'
+OR hasqualitiesof LIKE '%|{{$name}}'
+OR hasqualitiesof LIKE '%|{{$name}}|%'
+OR hasqualitiesof LIKE '{{$name}}|%')
+"""
+sort_by="page"
+layout=list report_style=compact
+row_template="""
+<li><b>[[{$page}]]</b>
+{?qualities [$qualities:items_wlink_qualities]}
+{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
+<small>{$description}</small></li>
+"""]]
