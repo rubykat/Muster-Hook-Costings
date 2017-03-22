@@ -34,8 +34,6 @@ use Lingua::EN::Titlecase;
 sub derive_title {
     my $self = shift;
 
-    # try to extract title
-    #return $1 if defined $self->html and $self->html =~ m|<h1>(.*?)</h1>|i;
     my $name = $self->name;
     $name =~ s/_/ /g;
     my $tc = Lingua::EN::Titlecase->new($name);

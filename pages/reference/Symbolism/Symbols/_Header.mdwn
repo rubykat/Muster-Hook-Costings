@@ -9,7 +9,7 @@ pre_item=""
 post_item=""
 item_sep=", "
 no_div=1
-pagenames="{{$SymbolType}}"]]
+titles="{{$SymbolType}}"]]
 
 [[!pmap relto="reference/Symbolism/Being"
 prepend="**Being:** "
@@ -19,7 +19,7 @@ pre_item=""
 post_item=""
 item_sep=", "
 no_div=1
-pagenames="{{$Being}}"]]
+titles="{{$Being}}"]]
 
 [[!pmap relto="reference/Symbolism/Qualities"
 prepend="**Qualities:** "
@@ -29,7 +29,7 @@ pre_item=""
 post_item=""
 item_sep=", "
 no_div=1
-pagenames="{{$Qualities}}"]]
+titles="{{$Qualities}}"]]
 
 [[!pmap relto="reference/Symbolism/Symbols"
 prepend="**Has Qualities Of:** "
@@ -39,7 +39,7 @@ pre_item=""
 post_item=""
 item_sep=", "
 no_div=1
-pagenames="{{$HasQualitiesOf}}"]]
+titles="{{$HasQualitiesOf}}"]]
 
 [[!pmap relto="reference/Symbolism/Symbols"
 prepend="**See Also:** "
@@ -50,7 +50,7 @@ post_item=""
 item_sep=", "
 no_div=1
 show="title desc"
-pagenames="{{$SeeAlso}}"]]
+titles="{{$SeeAlso}}"]]
 
 [[!sqlreport
 database=ikiwiki

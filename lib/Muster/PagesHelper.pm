@@ -262,14 +262,32 @@ sub _process_side_page {
     my $cp_info = $self->{metadb}->page_or_file_info($current_page);
     my $side_info = $self->{metadb}->page_or_file_info($side_page);
 
-    my $side_leaf = Muster::LeafFile->new(%{$side_info});
+    my $side_leaf = Muster::LeafFile->new(
+        pagename=>$side_info->{pagename},
+        parent_page=>$side_info->{parent_page},
+        filename=>$side_info->{filename},
+        pagetype=>$side_info->{pagetype},
+        extension=>$side_info->{extension},
+        name=>$side_info->{name},
+        title=>$side_info->{title},
+        meta=>$side_info,
+    );
     $side_leaf = $side_leaf->reclassify();
     if (!$side_leaf)
     {
         croak "ERROR: leaf did not reclassify\n";
     }
 
-    my $cp_leaf = Muster::LeafFile->new(%{$cp_info});
+    my $cp_leaf = Muster::LeafFile->new(
+        pagename=>$cp_info->{pagename},
+        parent_page=>$cp_info->{parent_page},
+        filename=>$cp_info->{filename},
+        pagetype=>$cp_info->{pagetype},
+        extension=>$cp_info->{extension},
+        name=>$cp_info->{name},
+        title=>$cp_info->{title},
+        meta=>$cp_info,
+    );
     $cp_leaf = $cp_leaf->reclassify();
     if (!$cp_leaf)
     {

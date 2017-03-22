@@ -93,6 +93,7 @@ sub process {
 
     if (! exists $params{pages}
             and ! exists $params{pagenames}
+            and ! exists $params{titles}
             and ! exists $params{where})
     {
 	return "ERROR: missing pages/pagenames/where parameter";
@@ -108,10 +109,12 @@ sub process {
         my $pages = $self->{metadb}->query_pagespec($params{pages});
         @matching_pages = @{$pages} if $pages;
     }
-    elsif (exists $params{pagenames} and exists $params{relto})
+    elsif (exists $params{titles} and exists $params{relto})
     {
+        # titles are separated by | and may have spaces which should be _
+        $params{titles} =~ s/ /_/g;
 	@matching_pages =
-	    map { $self->{metadb}->bestlink($params{relto}, $_) } split ' ', $params{pagenames};
+	    map { $self->{metadb}->bestlink($params{relto}, $_) } split /\|/, $params{titles};
     }
     elsif (exists $params{pagenames})
     {

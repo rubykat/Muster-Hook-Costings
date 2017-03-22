@@ -74,8 +74,6 @@ sub process {
 
     my $content = $leaf->cooked();
     my $page = $leaf->pagename;
-    ## TODO: Fix destpage for page inclusions
-    my $destpage = $page;
 
     # substitute {{$var}} variables (source-page)
     $content =~ s/(\\?)\{\{\$([-\w]+)\}\}/$self->get_field_value($1,$2,$leaf)/eg;
@@ -87,8 +85,6 @@ sub process {
         # substitute {{$page#var}} variables (source-page)
         $content =~ s/(\\?)\{\{\$([-\w\/]+)#([-\w]+)\}\}/$self->get_other_page_field_value($1, $3,$leaf,$2)/eg;
     }
-
-    # TODO - deal with destpage/page inclusions
 
     $leaf->{cooked} = $content;
     return $leaf;

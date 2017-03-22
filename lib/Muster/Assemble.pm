@@ -90,7 +90,7 @@ sub serve_page {
     $info->{_globalinfo} = $self->{metadb}->global_info();
 
 
-    my $leaf = $self->_create_and_process_leaf(%{$info});
+    my $leaf = $self->_create_and_process_leaf($info);
 
     my $html = $leaf->html();
     unless (defined $html)
@@ -175,7 +175,7 @@ sub serve_source {
         return;
     }
 
-    my $leaf = $self->_create_and_process_leaf(%{$info});
+    my $leaf = $self->_create_and_process_leaf($info);
 
     my $content = $leaf->raw();
     unless (defined $content)
@@ -226,16 +226,26 @@ sub _serve_file {
 =head2 _create_and_process_leaf
 
 Create and process a leaf (which contains meta-data and content).
+This leaf data comes from the database (apart from the content).
     
-    $leaf = $self->_create_and_process_leaf(page_dir=>$page_dir, filename=>$File::Find::name, dir=>$File::Find::dir);
+    $leaf = $self->_create_and_process_leaf($meta);
 
 =cut
 
 sub _create_and_process_leaf {
     my $self = shift;
-    my %info = @_;
+    my $meta = shift;
 
-    my $leaf = Muster::LeafFile->new(%info);
+    my $leaf = Muster::LeafFile->new(
+        pagename=>$meta->{pagename},
+        parent_page=>$meta->{parent_page},
+        filename=>$meta->{filename},
+        pagetype=>$meta->{pagetype},
+        extension=>$meta->{extension},
+        name=>$meta->{name},
+        title=>$meta->{title},
+        meta=>$meta,
+    );
     $leaf = $leaf->reclassify();
     if (!$leaf)
     {

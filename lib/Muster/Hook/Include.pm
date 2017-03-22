@@ -67,7 +67,8 @@ sub process {
     my %params = @p;
     my $pagename = $leaf->pagename;
 
-    if (! exists $params{pagenames}) {
+    if (! exists $params{pagenames})
+    {
 	return "ERROR: missing pagenames parameter";
     }
     if ($scanning)
@@ -87,7 +88,16 @@ sub process {
         my $info = $self->{metadb}->page_or_file_info($page);
         if ($info and $info->{pagetype} eq $this_pagetype)
         {
-            my $new_leaf = Muster::LeafFile->new(%{$info});
+            my $new_leaf = Muster::LeafFile->new(
+                pagename=>$info->{pagename},
+                parent_page=>$info->{parent_page},
+                filename=>$info->{filename},
+                pagetype=>$info->{pagetype},
+                extension=>$info->{extension},
+                name=>$info->{name},
+                title=>$info->{title},
+                meta=>$info,
+            );
             $new_leaf = $new_leaf->reclassify();
             if (!$new_leaf)
             {
