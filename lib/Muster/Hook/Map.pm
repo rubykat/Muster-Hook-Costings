@@ -74,6 +74,7 @@ sub register {
 =head2 process
 
 Process maps.
+If there are no matching pages, returns an empty string.
 
 =cut
 sub process {
@@ -230,6 +231,10 @@ sub process {
                 : "<div class='map'>$tree</div>\n"));
     } # else pmap
 
+    if ($params{prepend})
+    {
+        $result = $params{prepend} . $result;
+    }
     return $result;
 } # process
 
