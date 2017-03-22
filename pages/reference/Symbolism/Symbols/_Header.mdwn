@@ -1,25 +1,56 @@
 #{{$title}}
 {{$description}}
 
-[[!pmap relto="reference/Symbolism/Types" pagenames="{{$SymbolType}}"]]
+[[!pmap relto="reference/Symbolism/Types"
+prepend="**Symbol Type:** "
+links_head=""
+links_foot=""
+pre_item=""
+post_item=""
+item_sep=", "
+no_div=1
+pagenames="{{$SymbolType}}"]]
 
-[[!pmap relto="reference/Symbolism/Being" pagenames="{{$Being}}"]]
+[[!pmap relto="reference/Symbolism/Being"
+prepend="**Being:** "
+links_head=""
+links_foot=""
+pre_item=""
+post_item=""
+item_sep=", "
+no_div=1
+pagenames="{{$Being}}"]]
 
-[[!pmap relto="reference/Symbolism/Qualities" pagenames="{{$Qualities}}"]]
+[[!pmap relto="reference/Symbolism/Qualities"
+prepend="**Qualities:** "
+links_head=""
+links_foot=""
+pre_item=""
+post_item=""
+item_sep=", "
+no_div=1
+pagenames="{{$Qualities}}"]]
 
-[[!pmap relto="reference/Symbolism/Symbols" pagenames="{{$HasQualitiesOf}}"]]
+[[!pmap relto="reference/Symbolism/Symbols"
+prepend="**Has Qualities Of:** "
+links_head=""
+links_foot=""
+pre_item=""
+post_item=""
+item_sep=", "
+no_div=1
+pagenames="{{$HasQualitiesOf}}"]]
 
-\[[!sqlreport database=ikiwiki table=pagefields
-where="""
-page = 'reference/Symbolism/Symbols/{{$SeeAlso}}'
-"""
-layout=none report_style=bare
-row_template="""
-<b>[[{$page}]]</b>
-{?qualities [$qualities:items_wlink_qualities]}
-{?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
-<small>{$description}</small>
-"""]]
+[[!pmap relto="reference/Symbolism/Symbols"
+prepend="**See Also:** "
+links_head=""
+links_foot=""
+pre_item=""
+post_item=""
+item_sep=", "
+no_div=1
+show="title desc"
+pagenames="{{$SeeAlso}}"]]
 
 [[!sqlreport
 database=ikiwiki
@@ -42,4 +73,11 @@ row_template="""
 {?qualities [$qualities:items_wlink_qualities]}
 {?hasqualitiesof ([$hasqualitiesof:items_wlink_symbols])}
 <small>{$description}</small></li>
-"""]]
+"""
+ltemplate="""
+<hr/>
+**Referenced by:**
+CONTENTS
+<hr/>
+"""
+]]
