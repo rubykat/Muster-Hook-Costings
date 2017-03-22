@@ -122,6 +122,10 @@ sub get_field_value {
     {
         $value = $leaf->{$field};
     }
+    if (!defined $value)
+    {
+        return '';
+    }
     if (ref $value eq 'ARRAY')
     {
         $value = join(' ', @{$value});
