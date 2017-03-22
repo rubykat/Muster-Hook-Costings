@@ -331,6 +331,10 @@ sub do_report {
 	    : $self->get_colnames($table)));
 
     my $total = $self->get_total_matching(%args);
+    if ($total == 0)
+    {
+        return '';
+    }
 
     my ($sth1, $sth2) = $self->make_selections(%args,
 	show=>\@columns,
