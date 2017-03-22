@@ -112,7 +112,10 @@ sub _init {
 
 =head2 _sidebar
 
-Fill in the sidebar
+Fill in the sidebar.
+I have decided, for the sake of speed, to "hardcode" the contents of the sidebar,
+considering that for some pages it too 2.5 seconds to load the page with an external sidebar,
+and only .6 seconds when using the internal default.
 
 =cut
 
@@ -123,23 +126,15 @@ sub _sidebar {
     my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
 
-    my $side_page = $self->_find_side_page(current_page=>$pagename, side_page=>'_Sidebar');
-    if ($side_page)
-    {
-        my $leaf = $self->_process_side_page(current_page=>$pagename, side_page=>$side_page);
-        return $leaf->html;
-    }
-    else # default
-    {
-        my $info = $self->{metadb}->page_or_file_info($pagename);
-        my $out = $self->_make_page_related_list($c);
-        return "<nav>$out</nav>\n";
-    }
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    my $out = $self->_make_page_related_list($c);
+    return "<nav>$out</nav>\n";
 } # _sidebar
 
 =head2 _rightbar
 
-Fill in the rightbar
+Fill in the rightbar.
+I have decided, for the sake of speed, to "hardcode" the contents of the rightbar also.
 
 =cut
 
@@ -150,28 +145,21 @@ sub _rightbar {
     my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
 
-    my $side_page = $self->_find_side_page(current_page=>$pagename, side_page=>'_Rightbar');
-    if ($side_page)
-    {
-        my $leaf = $self->_process_side_page(current_page=>$pagename, side_page=>$side_page);
-        return $leaf->html;
-    }
-    else
-    {
-        my $info = $self->{metadb}->page_or_file_info($pagename);
-        my $total = $self->_total_pages($c);
-        my $atts = $self->_make_page_attachments_list($c);
-        my $out=<<EOT;
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    my $total = $self->_total_pages($c);
+    my $atts = $self->_make_page_attachments_list($c);
+    my $out=<<EOT;
 <p class="total">$total pages</p>
 $atts
 EOT
         return $out;
-    }
 } # _rightbar
 
 =head2 _header
 
-Fill in the header
+Fill in the header.
+By default, there is no page header.
+But for some pages, this is heavily depended upon.
 
 =cut
 
@@ -193,7 +181,9 @@ sub _header {
 
 =head2 _footer
 
-Fill in the footer
+Fill in the footer.
+By default, there is no page footer.
+But for some pages, this is heavily depended upon.
 
 =cut
 
