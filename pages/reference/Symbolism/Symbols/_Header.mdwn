@@ -1,14 +1,17 @@
 #{{$title}}
 {{$description}}
 
-**Symbol Type:** {{$SymbolType}}
-**Being:** {{$Being}}
-**Qualities:** {{$Qualities}}
-**Has Qualities Of:** {{$HasQualitiesOf}}
+[[!pmap relto="reference/Symbolism/Types" pagenames="{{$SymbolType}}"]]
 
-[[!sqlreport database=ikiwiki table=pagefields
+[[!pmap relto="reference/Symbolism/Being" pagenames="{{$Being}}"]]
+
+[[!pmap relto="reference/Symbolism/Qualities" pagenames="{{$Qualities}}"]]
+
+[[!pmap relto="reference/Symbolism/Symbols" pagenames="{{$HasQualitiesOf}}"]]
+
+\[[!sqlreport database=ikiwiki table=pagefields
 where="""
-page = 'reference/Symbolism/Symbols/<TMPL_VAR NAME="SeeAlso">'
+page = 'reference/Symbolism/Symbols/{{$SeeAlso}}'
 """
 layout=none report_style=bare
 row_template="""

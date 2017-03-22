@@ -107,6 +107,11 @@ sub process {
         my $pages = $self->{metadb}->query_pagespec($params{pages});
         @matching_pages = @{$pages} if $pages;
     }
+    elsif (exists $params{pagenames} and exists $params{relto})
+    {
+	@matching_pages =
+	    map { $self->{metadb}->bestlink($params{relto}, $_) } split ' ', $params{pagenames};
+    }
     elsif (exists $params{pagenames})
     {
 	@matching_pages =
@@ -116,6 +121,10 @@ sub process {
     {
         my $pages = $self->{metadb}->query("SELECT page FROM pagefiles WHERE " . $params{where});
         @matching_pages = @{$pages} if $pages;
+    }
+    if (!scalar @matching_pages)
+    {
+        return "";
     }
 
     my $result = '';
