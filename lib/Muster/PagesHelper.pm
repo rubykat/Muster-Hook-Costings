@@ -124,7 +124,7 @@ sub _sidebar {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash
 
     my $info = $self->{metadb}->page_or_file_info($pagename);
     my $out = $self->_make_page_related_list($c);
@@ -143,7 +143,7 @@ sub _rightbar {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash
 
     my $info = $self->{metadb}->page_or_file_info($pagename);
     my $total = $self->_total_pages($c);
@@ -168,7 +168,7 @@ sub _header {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash
     my $side_page = $self->_find_side_page(current_page=>$pagename, side_page=>'_Header');
     if ($side_page)
     {
@@ -192,7 +192,7 @@ sub _footer {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash 
     my $side_page = $self->_find_side_page(current_page=>$pagename, side_page=>'_Footer');
     if ($side_page)
     {
@@ -314,7 +314,7 @@ sub _make_page_attachments_list {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash
 
     my $info = $self->{metadb}->page_or_file_info($pagename);
     my $att_list = '';
@@ -350,7 +350,7 @@ sub _make_page_related_list {
     my $c  = shift;
 
     my $pagename = $c->param('cpath');
-    $pagename =~ s!/$!!; # remove trailing slash -- TEMPORARY FIX
+    $pagename =~ s!/$!!; # remove trailing slash
 
     # for this, add a leading and trailing slash to every page
     my @pagenames = map { '/' . $_ . '/' } $self->{metadb}->pagelist();
