@@ -53,6 +53,7 @@ sub build_meta {
         extension=>$self->extension,
         name=>$self->name,
         title=>$self->derive_title,
+        wordcount=>$self->wordcount,
     };
 
     # if there's no YAML in the file then there's no further meta-data
@@ -194,6 +195,27 @@ sub build_html {
     my $content = $self->cooked();
     return markdown($content);
 }
+
+sub wordcount {
+    my $self = shift;
+
+    if (!exists $self->{wordcount})
+    {
+        my $content = $self->raw();
+
+        # count the words in the content
+        $content =~ s/<[^>]+>/ /gs; # remove html tags
+        # Remove everything but letters + spaces
+        # This is so that things like apostrophes don't make one
+        # word count as two words
+        $content =~ s/[^\w\s]//gs;
+
+        my @matches = ($content =~ m/\b[\w]+/gs);
+        $self->{wordcount} = scalar @matches;
+    }
+
+    return $self->{wordcount};
+} # wordcount
 
 1;
 

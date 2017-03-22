@@ -438,8 +438,21 @@ sub _generate_derived_tables {
     print STDERR "Generating flatfields table\n";
     my @fieldnames = $self->_get_all_fieldnames();
 
+    # need to define some fields as numeric
+    my @field_defs = ();
+    foreach my $field (@fieldnames)
+    {
+        if (exists $self->{field_types}->{$field})
+        {
+            push @field_defs, $field . ' ' . $self->{field_types}->{$field};
+        }
+        else
+        {
+            push @field_defs, $field;
+        }
+    }
     my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
-    . join(", ", @fieldnames) .");";
+    . join(", ", @field_defs) .");";
     my $ret = $dbh->do($q);
     if (!$ret)
     {
