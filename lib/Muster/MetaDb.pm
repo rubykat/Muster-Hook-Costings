@@ -1096,9 +1096,14 @@ sub _add_page_data {
                 my $value = $meta{$field};
 
                 next unless defined $value;
-                if (ref $value)
+                if (ref $value eq 'ARRAY')
                 {
                     $value = join("|", @{$value});
+                }
+                elsif (ref $value)
+                {
+                    $value = Dump($value);
+                    warn __PACKAGE__, " unexpected value:", $value;
                 }
 
                 $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";

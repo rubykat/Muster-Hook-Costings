@@ -1,19 +1,53 @@
 #{{$title}}
 {{$description}}
 
-##Tasks
-
-**Pending:**
+#Tasks
 
 [[!sqlreport
 database=tasks
 table=tasks
 where="""
 full_project = '{{$name}}'
-AND status = 'pending'
-AND depends IS NULL
+and status != 'deleted'
 """
-sort_by="-urgency -priorityval due wait id"
+headers="{$status}"
+header_start=2
+sort_by="status -urgency -priorityval due wait id"
+table_class=data
+table_header=" "
+row_template="""
+<tr {?has_depends class="depends"}>
+<td><strong>({$id})</strong></td>
+<td>
+{?priority [$priority]}
+{?urgency ([$urgency])}
+</td>
+<td>
+{?wait Wait:[$waitdate]}
+{?due Due:[$duedate]}
+{?start Start:[$startdate]}
+{?end End:[$enddate]}
+</td>
+<td>
+{?depends Depends:[$depends:pipetocomma]}
+{?tags ([$tags:items_wlink_tag])}
+</td></tr>
+<tr {?has_depends class="depends"}>
+<td colspan=4><em>{$description} {?annotations :: [$annotations]}</em>
+</td>
+</tr>
+"""]]
+
+[[!sqlreport
+database=tasks
+table=completed_tasks
+where="""
+full_project = '{{$name}}'
+and status != 'deleted'
+"""
+headers="{$status}"
+header_start=2
+sort_by="status -urgency -priorityval due wait id"
 table_class=data
 table_header=" "
 row_template="""
@@ -38,91 +72,4 @@ row_template="""
 </tr>
 """]]
 
-**Depends:**
-
-[[!sqlreport
-database=tasks
-table=tasks
-where="""
-full_project = '{{$name}}'
-AND status = 'pending'
-AND depends NOT NULL
-"""
-sort_by="-urgency -priorityval due wait id"
-layout=list
-row_template="""
-<li><strong>({$id})</strong>
-{?proj_type [$proj_type]}
-[[agito/projects/{$full_project}]]
-{$status}
-{?priority [$priority]}
-{?urgency ([$urgency])}
-{?wait Wait:[$waitdate]}
-{?due Due:[$duedate]}
-{?start Start:[$startdate]}
-{?end End:[$enddate]}
-{?depends Depends:[$depends]}
-{?tags ([$tags:items_wlink_tag])}
-<br/><em>{$description} {?annotations :: [$annotations]}
-</em>
-</li>
-"""]]
-
-**Waiting:**
-
-[[!sqlreport
-database=tasks
-table=tasks
-where="""
-full_project = '{{$name}}'
-AND status = 'waiting'
-"""
-sort_by="-urgency -priorityval wait id"
-layout=list
-row_template="""
-<li><strong>({$id})</strong>
-{?proj_type [$proj_type]}
-[[agito/projects/{$full_project}]]
-{$status}
-{?priority [$priority]}
-{?urgency ([$urgency])}
-{?wait Wait:[$waitdate]}
-{?due Due:[$duedate]}
-{?start Start:[$startdate]}
-{?end End:[$enddate]}
-{?depends Depends:[$depends]}
-{?tags ([$tags:items_wlink_tag])}
-<br/><em>{$description} {?annotations :: [$annotations]}
-</em>
-</li>
-"""]]
-
-**Completed:**
-
-[[!sqlreport
-database=tasks
-table=completed_tasks
-where="""
-full_project = '{{$name}}'
-AND status = 'completed'
-"""
-sort_by="end -priorityval id"
-layout=list
-row_template="""
-<li><strong>({$id})</strong>
-{?proj_type [$proj_type]}
-[[agito/projects/done/{$full_project}]]
-{$status}
-{?priority [$priority]}
-{?urgency ([$urgency])}
-{?wait Wait:[$waitdate]}
-{?due Due:[$duedate]}
-{?start Start:[$startdate]}
-{?end End:[$enddate]}
-{?tags ([$tags:items_wlink_tag])}
-<br/><em>{$description} {?annotations :: [$annotations]}
-</em>
-</li>
-"""]]
-
-##Notes
+#Notes

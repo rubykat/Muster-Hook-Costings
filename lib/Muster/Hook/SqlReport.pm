@@ -123,7 +123,8 @@ sub DESTROY {
     {
         foreach my $db (keys %{$self->{databases}})
         {
-            if ($self->{databases}->{$db})
+            if (defined $self->{databases}->{$db}
+                    and defined $self->{databases}->{$db}->{dbh})
             {
                 $self->{databases}->{$db}->do_disconnect();
             }
