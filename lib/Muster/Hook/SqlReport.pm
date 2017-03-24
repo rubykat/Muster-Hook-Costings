@@ -114,6 +114,24 @@ sub process {
     return $out;
 } # preprocess
 
+sub DESTROY {
+    my $self = shift;
+
+    if (exists $self->{databases}
+            and defined $self->{databases}
+            and ref $self->{databases} eq 'HASH')
+    {
+        foreach my $db (keys %{$self->{databases}})
+        {
+            if ($self->{databases}->{$db})
+            {
+                $self->{databases}->{$db}->do_disconnect();
+            }
+        }
+    }
+} # DESTROY
+
+1;
 # =================================================================
 package SQLite::Work::Muster;
 use SQLite::Work;
