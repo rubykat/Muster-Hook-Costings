@@ -1236,6 +1236,13 @@ sub DESTROY {
             and defined $self->{dbh}
             and ref $self->{dbh})
     {
+        if (exists $self->{prepared})
+        {
+            foreach my $q (keys %{$self->{prepared}})
+            {
+                delete $self->{prepared}->{$q};
+            }
+        }
         $self->{dbh}->disconnect();
     }
 } # DESTROY
