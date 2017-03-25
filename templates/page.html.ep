@@ -10,6 +10,4 @@
 <%== foil_theme_selector %>
 <%== muster_rightbar %>
 % end
-<%== muster_header %>
 <%== $content %>
-<%== muster_footer %>
