@@ -230,12 +230,8 @@ sub page_exists {
     my $dbh = $self->{dbh};
 
     my $q = "SELECT COUNT(*) FROM pagefiles WHERE page = ?;";
+    my $sth = $self->_prepare($q);
 
-    my $sth = $dbh->prepare($q);
-    if (!$sth)
-    {
-        croak "FAILED to prepare '$q' $DBI::errstr";
-    }
     my $ret = $sth->execute($page);
     if (!$ret)
     {
@@ -341,6 +337,9 @@ sub _connect {
 
         # Create the tables if they don't exist
         $self->_create_tables();
+
+        # cache for prepared statements
+        $self->{prepared} = {};
     }
     else
     {
@@ -349,6 +348,35 @@ sub _connect {
 
     return 1;
 } # _connect
+
+=head2 _prepare
+
+Retrieve or create prepared statement handles.
+
+    my $sth = $self->_prepare($q);
+
+=cut
+sub _prepare {
+    my $self = shift;
+    my $q = shift;
+
+    my $sth;
+    if (exists $self->{prepared}->{$q}
+            and defined $self->{prepared}->{$q})
+    {
+        $sth = $self->{prepared}->{$q};
+    }
+    else
+    {
+        $sth = $self->{dbh}->prepare($q);
+        if (!$sth)
+        {
+            croak "FAILED to prepare '$q' $DBI::errstr";
+        }
+        $self->{prepared}->{$q} = $sth;
+    }
+    return $sth;
+} # _prepare
 
 =head2 _create_tables
 
@@ -437,7 +465,7 @@ sub _generate_derived_tables {
     my $placeholders = join ", ", ('?') x @fieldnames;
     my $iq = 'INSERT INTO flatfields (page, '
     . join(", ", @fieldnames) . ') VALUES (?, ' . $placeholders . ');';
-    my $isth = $dbh->prepare($iq);
+    my $isth = $self->_prepare($iq);
     if (!$isth)
     {
         croak __PACKAGE__ . " failed to prepare '$iq' : $DBI::errstr";
@@ -668,7 +696,7 @@ sub _get_fields_for_page {
     my $dbh = $self->{dbh};
     my $q = "SELECT field, value FROM deepfields WHERE page = ?;";
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -764,7 +792,7 @@ sub _get_page_meta {
 
     my $q = "SELECT * FROM pagefiles WHERE page = ?;";
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -785,7 +813,7 @@ sub _get_page_meta {
         # now the rest of the meta, if this is a page
         $q = "SELECT * FROM flatfields WHERE page = ?;";
 
-        $sth = $dbh->prepare($q);
+        $sth = $self->_prepare($q);
         if (!$sth)
         {
             croak "FAILED to prepare '$q' $DBI::errstr";
@@ -831,7 +859,7 @@ sub _do_one_col_query {
     }
     my $dbh = $self->{dbh};
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -865,7 +893,7 @@ sub _total_pagefiles {
 
     my $q = "SELECT COUNT(*) FROM pagefiles;";
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -899,7 +927,7 @@ sub _total_pages {
 
     my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != '';";
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -946,7 +974,7 @@ sub _find_pagename {
     my $q = "SELECT page FROM pagefiles WHERE UPPER(page) = ?;";
     my $upper_page = uc($page);
 
-    my $sth = $dbh->prepare($q);
+    my $sth = $self->_prepare($q);
     if (!$sth)
     {
         croak "FAILED to prepare '$q' $DBI::errstr";
@@ -1021,7 +1049,7 @@ sub _add_page_data {
             }
         }
         $q .= " WHERE page = '$pagename';";
-        my $sth = $dbh->prepare($q);
+        my $sth = $self->_prepare($q);
         if (!$sth)
         {
             croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
@@ -1037,7 +1065,7 @@ sub _add_page_data {
         my $placeholders = join ", ", ('?') x @{$self->{primary_fields}};
         $q = 'INSERT INTO pagefiles (page, '
         . join(", ", @{$self->{primary_fields}}) . ') VALUES (?, ' . $placeholders . ');';
-        my $sth = $dbh->prepare($q);
+        my $sth = $self->_prepare($q);
         if (!$sth)
         {
             croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
@@ -1067,7 +1095,7 @@ sub _add_page_data {
         {
             # the "OR IGNORE" allows duplicates to be silently discarded
             $q = "INSERT OR IGNORE INTO links(page, links_to) VALUES(?, ?);";
-            my $sth = $dbh->prepare($q);
+            my $sth = $self->_prepare($q);
             if (!$sth)
             {
                 croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
@@ -1107,7 +1135,7 @@ sub _add_page_data {
                 }
 
                 $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";
-                my $sth = $dbh->prepare($q);
+                my $sth = $self->_prepare($q);
                 if (!$sth)
                 {
                     croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
@@ -1133,7 +1161,7 @@ sub _delete_page_from_db {
     foreach my $table (qw(pagefiles links deepfields flatfields))
     {
         my $q = "DELETE FROM $table WHERE page = ?;";
-        my $sth = $dbh->prepare($q);
+        my $sth = $self->_prepare($q);
         my $ret = $sth->execute($page);
         if (!$ret)
         {
@@ -1200,6 +1228,17 @@ sub _pagespec_translate {
 
     return $sql;
 } # _pagespec_translate
+
+sub DESTROY {
+    my $self = shift;
+
+    if (exists $self->{dbh}
+            and defined $self->{dbh}
+            and ref $self->{dbh})
+    {
+        $self->{dbh}->disconnect();
+    }
+} # DESTROY
 
 1; # End of Muster::MetaDb
 __END__
