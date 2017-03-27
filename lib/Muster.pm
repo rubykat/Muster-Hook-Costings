@@ -148,4 +148,57 @@ sub startup {
 # Here come the TEMPLATES!
 
 __DATA__
+@@apperror.html.ep
+% layout 'foil';
+% content_for 'verso' => begin
+<%== muster_sidebar %>
+% end
+% content_for 'recto' => begin
+<%== foil_theme_selector %>
+<%== muster_rightbar %>
+% end
+<h1>Error: <%= param('db') %></h1>
+<%== $errormsg %>
 
+@@not_found.html.ep
+% layout 'foil';
+% content_for 'verso' => begin
+<%== muster_sidebar %>
+% end
+% content_for 'recto' => begin
+<%== foil_theme_selector %>
+<%== muster_rightbar %>
+% end
+<h1>Not Found</h1>
+<p>Page <%= param 'cpath' %> not found <%= $status %></p>
+
+@@page.html.ep
+% layout 'foil';
+% content_for 'head_extra' => begin
+<link rel="stylesheet" href="<%= url_for('/css') %>/muster.css" type="text/css" />
+% end
+% content_for 'verso' => begin
+<%== muster_sidebar %>
+% end
+% content_for 'recto' => begin
+<%== foil_referrer %>
+<%== foil_theme_selector %>
+<%== muster_rightbar %>
+% end
+<%== $content %>
+
+@@pagelist.html.ep
+% layout 'foil';
+% content_for 'head_extra' => begin
+<link rel="stylesheet" href="<%= url_for('/css') %>/muster.css" type="text/css" />
+% end
+% content_for 'verso' => begin
+<%== muster_sidebar %>
+% end
+% content_for 'recto' => begin
+<%== foil_referrer %>
+<%== foil_theme_selector %>
+<%== muster_rightbar %>
+% end
+<h1>Page List:</h1>
+<%== muster_pagelist %>
