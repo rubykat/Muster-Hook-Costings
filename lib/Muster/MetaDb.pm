@@ -1035,7 +1035,7 @@ sub _pagelink {
         return $link;
     }
     # if this is an absolute link, needs a prefix in front of it
-    if (($link eq $info->{page}) or ($link eq $info->{pagename}))
+    if ($link eq $info->{pagename})
     {
         $link = $self->{route_prefix} . $link;
     }
@@ -1067,7 +1067,7 @@ sub _add_page_data {
     # ------------------------------------------------
     if (!$meta{pagelink})
     {
-        $meta{pagelink} = $self->_pagelink($meta{pagename}, \$meta);
+        $meta{pagelink} = $self->_pagelink($meta{pagename}, \%meta);
     }
     
     # ------------------------------------------------
