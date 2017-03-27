@@ -83,7 +83,7 @@ sub process {
 
     my $directive = $args{directive};
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
     my @p = @{$args{params}};
     my %params = @p;
     my $pagename = $leaf->pagename;
@@ -98,7 +98,7 @@ sub process {
     {
 	return "ERROR: missing pages/pagenames/where parameter";
     }
-    if ($scanning)
+    if ($phase eq $Muster::Hooks::PHASE_SCAN)
     {
         return "";
     }

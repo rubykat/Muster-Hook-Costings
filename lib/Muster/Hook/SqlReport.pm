@@ -83,7 +83,7 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
     my @p = @{$args{params}};
     my %params = @p;
 

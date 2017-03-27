@@ -247,7 +247,7 @@ sub _create_and_scan_leaf {
         croak "ERROR: leaf did not reclassify\n";
     }
 
-    return $self->{hookmaster}->run_hooks(leaf=>$leaf,scanning=>1);
+    return $self->{hookmaster}->run_hooks(leaf=>$leaf,phase=>$Muster::Hooks::PHASE_SCAN);
 } # _create_and_scan_leaf
 
 1; # End of Muster::Scanner

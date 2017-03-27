@@ -33,11 +33,11 @@ sub register {
         my %args = @_;
 
         my $leaf = $args{leaf};
-        my $scanning = $args{scanning};
+        my $phase = $args{phase};
         my @p = @{$args{params}};
         my %params = @p;
 
-        if ($scanning)
+        if ($phase eq $Muster::Hooks::PHASE_SCAN)
         {
             foreach my $key (keys %params)
             {

@@ -247,7 +247,7 @@ sub _create_and_process_leaf {
         croak "ERROR: leaf did not reclassify\n";
     }
 
-    return $self->{hookmaster}->run_hooks(leaf=>$leaf,scanning=>0);
+    return $self->{hookmaster}->run_hooks(leaf=>$leaf,phase=>$Muster::Hooks::PHASE_BUILD);
 } # _create_and_process_leaf
 1;
 # end of Muster::Assemble

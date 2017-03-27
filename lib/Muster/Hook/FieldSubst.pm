@@ -21,6 +21,7 @@ The pattern for fields is "{{$I<fieldname>}}".
 =cut
 
 use Mojo::Base 'Muster::Hook';
+use Muster::Hooks;
 use Muster::LeafFile;
 use YAML::Any;
 
@@ -57,7 +58,7 @@ In assembly phase, it will do the same, but the contents of the Leaf meta-data w
 
 In either case, this expects the leaf meta-data to be populated.
 
-  my $new_leaf = $self->process($leaf,$scanning);
+  my $new_leaf = $self->process(%args);
 
 =cut
 sub process {
@@ -65,7 +66,7 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
 
     if (!$leaf->pagetype)
     {
@@ -80,7 +81,7 @@ sub process {
 
     # we can't get other pages' meta-data if we are scanning
     # because they haven't been added to the database yet
-    if (!$scanning)
+    if ($phase eq $Muster::Hooks::PHASE_BUILD)
     {
         # substitute {{$page#var}} variables (source-page)
         $content =~ s/(\\?)\{\{\$([-\w\/]+)#([-\w]+)\}\}/$self->get_other_page_field_value($1, $3,$leaf,$2)/eg;

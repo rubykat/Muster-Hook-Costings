@@ -62,7 +62,7 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
     my @p = @{$args{params}};
     my %params = @p;
     my $pagename = $leaf->pagename;
@@ -71,7 +71,7 @@ sub process {
     {
 	return "ERROR: missing pagenames parameter";
     }
-    if ($scanning)
+    if ($phase eq $Muster::Hooks::PHASE_SCAN)
     {
         return "";
     }
@@ -132,7 +132,7 @@ sub include_a_page {
             directive=>'includepage',
             call=>$cb,
             leaf=>$new_leaf,
-            scanning=>0,
+            phase=>$Muster::Hooks::PHASE_BUILD,
         );
     }
     return $content;

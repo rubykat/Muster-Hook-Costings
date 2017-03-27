@@ -32,8 +32,6 @@ sub register {
 
     $self->{metadb} = $hookmaster->{metadb};
 
-    # Don't do header/footer inclusion in the scanning phase;
-    # it would be too confusing.
     $hookmaster->add_hook('headfoot' => sub {
             my %args = @_;
 
@@ -53,9 +51,11 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
 
-    if ($scanning)
+    # Don't do header/footer inclusion in the scanning phase;
+    # it would be too confusing.
+    if ($phase eq $Muster::Hooks::PHASE_SCAN)
     {
         return $leaf;
     }

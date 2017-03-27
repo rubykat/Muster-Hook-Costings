@@ -48,7 +48,7 @@ sub do_directives {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
     my $no_scan = $args{no_scan};
     my $directive = $args{directive};
     my $call = $args{call};
@@ -73,7 +73,7 @@ sub do_directives {
         {
             return "[[${prefix}${command} ${params}]]";
         }
-        elsif ($scanning and $no_scan)
+        elsif ($phase eq $Muster::Hooks::PHASE_SCAN and $no_scan)
         {
             # save time and return immediately
             return "";
@@ -145,10 +145,10 @@ sub do_directives {
                         "</span>]]";
             }
             my $ret;
-            if (! $scanning) # not scanning
+            if ($phase eq $Muster::Hooks::PHASE_BUILD) # not scanning
             {
                 $ret=eval {
-                    $call->(leaf=>$leaf, scanning=>$scanning, params=>\@params);
+                    $call->(leaf=>$leaf, phase=>$phase, params=>\@params);
                 };
                 if ($@)
                 {
@@ -163,7 +163,7 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $call->(leaf=>$leaf, scanning=>$scanning, params=>\@params);
+                    $call->(leaf=>$leaf, phase=>$phase, params=>\@params);
                 };
                 $ret="";
             }

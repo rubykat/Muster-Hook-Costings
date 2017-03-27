@@ -18,12 +18,15 @@ Muster::Hook - Muster hook base class
 
   sub register {
       my $self = shift;
+      my $hookmaster = shift;
+      my $conf = $shift;
 
       return $self;
   }
 
   sub process {
-    my ($self, $leaf,$scanning) = @_;
+    my $self = shift;
+    my %args = @_;
 
     # Magic here! :)
 
@@ -60,7 +63,7 @@ Process (scan or modify) a leaf object.  In scanning phase, it may update the
 meta-data, in modify phase, it may update the content.  May leave the leaf
 untouched.
 
-  my $new_leaf = $self->process(leaf=>$leaf,scanning=>$scanning);
+  my $new_leaf = $self->process(leaf=>$leaf,phase=>$phase);
 
 =cut
 
@@ -69,7 +72,7 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
 
     return $leaf;
 }

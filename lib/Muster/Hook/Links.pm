@@ -18,6 +18,7 @@ L<Muster::Hook::Links> processes for links.
 
 use Mojo::Base 'Muster::Hook';
 use Muster::LeafFile;
+use Muster::Hooks;
 use File::Basename;
 use File::Spec;
 use YAML::Any;
@@ -105,9 +106,7 @@ In scanning phase, it may update the meta-data,
 in modify phase, it may update the content.
 May leave the leaf untouched.
 
-  my $new_leaf = $self->process($leaf,$scanning);
-
-  my $new_leaf = $self->scan($leaf);
+  my $new_leaf = $self->process(%args);
 
 =cut
 sub process {
@@ -115,7 +114,7 @@ sub process {
     my %args = @_;
 
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
 
     if (!$leaf->pagetype)
     {
@@ -127,7 +126,7 @@ sub process {
     ## TODO: Fix destpage for page inclusions
     my $destpage = $page;
 
-    if ($scanning)
+    if ($phase eq $Muster::Hooks::PHASE_SCAN)
     {
         my %links = ();
 

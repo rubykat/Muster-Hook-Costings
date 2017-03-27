@@ -80,7 +80,7 @@ sub process {
 
     my $directive = $args{directive};
     my $leaf = $args{leaf};
-    my $scanning = $args{scanning};
+    my $phase = $args{phase};
     my @p = @{$args{params}};
     my $image = $p[0]; # the first argument is the image
     my %params = @p;
@@ -90,9 +90,9 @@ sub process {
     # - we are scanning
     # - this is the "defaults" directive
     # But if we are scanning the "defaults" directive, we want to remember it.
-    if ($image eq 'defaults' or $scanning)
+    if ($image eq 'defaults' or $phase eq $Muster::Hooks::PHASE_SCAN)
     {
-        if ($image eq 'defaults' and $scanning)
+        if ($image eq 'defaults' and $phase eq $Muster::Hooks::PHASE_SCAN)
         {
             $leaf->{meta}->{img_defaults} = Dump(\%params);
         }

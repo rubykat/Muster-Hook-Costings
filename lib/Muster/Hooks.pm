@@ -20,7 +20,32 @@ use Muster::Hook;
 use File::Spec;
 use File::Find;
 use YAML::Any;
+use Const::Fast;
 use Module::Pluggable search_path => ['Muster::Hook'], instantiate => 'new';
+
+=head1 PACKAGE CONSTANTS
+
+=over
+
+=item $PHASE_SCAN
+
+Hooks are currently in scanning phase where pages are scanned for meta-data.
+
+=item $PHASE_BUILD
+
+Hooks are currently in build/assemble phase, where the pages are read and built.
+
+=item $PHASE_FORMAT
+
+Hooks are currently in format phase, where the page has already been converted to HTML, and needs post-processing.
+
+=back
+
+=cut
+
+const our $PHASE_SCAN => 'scan';
+const our $PHASE_BUILD => 'build';
+const our $PHASE_FILTER => 'filter';
 
 =head1 METHODS
 
@@ -83,7 +108,7 @@ Run the hooks over the given leaf.
 Leaf must already be created and reclassified.
 The "scanning" flag says whether we are scanning or assembling.
     
-    $leaf = $self->run_hooks(leaf=>$leaf,scanning=>$scanning);
+    $leaf = $self->run_hooks(leaf=>$leaf,phase=>$phase);
 
 =cut
 

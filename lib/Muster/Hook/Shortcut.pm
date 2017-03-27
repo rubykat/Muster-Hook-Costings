@@ -39,13 +39,13 @@ sub register {
         my $callback = sub {
             my %args = @_;
             my $leaf = $args{leaf};
-            my $scanning = $args{scanning};
+            my $phase = $args{phase};
             my @params = @{$args{params}};
 
             return $self->shortcut_expand(
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{url},
                 $config->{hook_conf}->{'Muster::Hook::Shortcut'}->{$sh}->{desc},
-                scanning=>$scanning,
+                phase=>$phase,
                 leaf=>$leaf,
                 @params);
         };
