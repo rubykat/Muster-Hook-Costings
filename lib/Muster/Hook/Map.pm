@@ -138,9 +138,9 @@ sub process {
         my @urls = ();
         foreach my $pn (@matching_pages)
         {
-            my $page_info = $self->{metadb}->page_or_file_info($pn);
+            my $pi = $self->{metadb}->page_or_file_info($pn);
             $labels{$pn} = basename($pn);
-            push @urls, Muster::Hook::Links::pagelink($pn,$page_info);
+            push @urls, $pi->{pagelink};
         }
         $result = HTML::LinkList::link_list(
             urls=>\@urls,
@@ -173,7 +173,7 @@ sub process {
             {
                 $max_depth = $pd;
             }
-            my $urlto = Muster::Hook::Links::pagelink($page,$page_info);
+            my $urlto = $page_info->{pagelink};
             push @link_list, $urlto;
 
             if (defined $show)

@@ -36,13 +36,16 @@ Set the defaults for the object if they are not defined already.
 sub init {
     my $self = shift;
 
-    $self->{primary_fields} = [qw(title name pagetype extension filename parent_page)];
+    $self->{primary_fields} = [qw(title name pagetype pagelink extension filename parent_page)];
     if (!defined $self->{metadb_db})
     {
         # give a default name
         $self->{metadb_db} = 'muster.sqlite';
     }
-    $self->{default_limit} = 100 if !defined $self->{default_limit};
+    if (!defined $self->{route_prefix})
+    {
+        $self->{route_prefix} = '/'; # for absolute links
+    }
 
     return $self;
 
@@ -192,8 +195,27 @@ sub pagelist {
         return undef;
     }
 
-    return $self->_get_all_pagenames(%args);
+    return $self->_get_all_pagenames();
 } # pagelist
+
+=head2 allpagelinks
+
+Query the database, return a list of all pages' pagelinks.
+
+=cut
+
+sub allpagelinks {
+    my $self = shift;
+    my %args = @_;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    my $pagelinks = $self->_do_one_col_query("SELECT pagelink FROM pagefiles WHERE pagetype != '' ORDER BY page;");
+    return @{$pagelinks};
+} # allpagelinks
 
 =head2 total_pages
 
@@ -649,13 +671,12 @@ sub _get_all_pagefiles {
 
 List of all pagenames
 
-$dbtable->_get_all_pagenames(%args);
+$dbtable->_get_all_pagenames();
 
 =cut
 
 sub _get_all_pagenames {
     my $self = shift;
-    my %args = @_;
 
     my $dbh = $self->{dbh};
     my $pages = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE pagetype != '' ORDER BY page;");
@@ -993,6 +1014,39 @@ sub _find_pagename {
     return $realpage;
 } # _find_pagename
 
+=head2 _pagelink
+
+The page as if it were a html link.
+This does things like add a route-prefix or trailing slash if it is needed.
+
+It's okay to hardcode the route-prefix into the database, because it isn't
+as if one is going to be mounting the same config multiple times with different
+route-prefixes. If you have a different config, you're going to need a
+different database.
+
+=cut
+sub _pagelink {
+    my $self = shift;
+    my $link = shift;
+    my $info = shift;
+
+    if (!defined $info)
+    {
+        return $link;
+    }
+    # if this is an absolute link, needs a prefix in front of it
+    if (($link eq $info->{page}) or ($link eq $info->{pagename}))
+    {
+        $link = $self->{route_prefix} . $link;
+    }
+    # if this is a page, it needs a slash added to it
+    if ($info->{pagetype})
+    {
+        $link .= '/';
+    }
+    return $link;
+} # _pagelink
+
 =head2 _add_page_data
 
 Add metadata to db for one page.
@@ -1008,6 +1062,14 @@ sub _add_page_data {
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
 
+    # ------------------------------------------------
+    # Derive derivable data
+    # ------------------------------------------------
+    if (!$meta{pagelink})
+    {
+        $meta{pagelink} = $self->_pagelink($meta{pagename}, \$meta);
+    }
+    
     # ------------------------------------------------
     # TABLE: pagefiles
     # ------------------------------------------------

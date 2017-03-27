@@ -46,35 +46,6 @@ my $Link_Regexp = qr{
 my $Email_Regexp = qr/^.+@.+\..+$/;
 my $Url_Regexp = qr/^(?:[^:]+:\/\/|mailto:).*/i;
 
-=head1 CLASS FUNCTIONS
-
-=head2 pagelink
-
-The page as if it were a html link.
-This does things like add a trailing slash if it is needed.
-
-=cut
-sub pagelink {
-    my $link = shift;
-    my $info = shift;
-
-    if (!defined $info)
-    {
-        return $link;
-    }
-    # if this is an absolute link, needs a slash in front of it
-    if (($link eq $info->{page}) or ($link eq $info->{pagename}))
-    {
-        $link = "/$link";
-    }
-    # if this is a page, it needs a slash added to it
-    if ($info->{pagetype})
-    {
-        $link .= '/';
-    }
-    return $link;
-} # pagelink
-
 =head1 METHODS
 
 =head2 register
@@ -227,7 +198,7 @@ sub htmllink {
     my $bestlink;
     if (! $opts{forcesubpage})
     {
-        $bestlink=$self->bestlink(page=>$lpage, link=>$link);
+        $bestlink=$self->{metadb}->bestlink(page=>$lpage, link=>$link);
     }
     else
     {
@@ -261,29 +232,8 @@ sub htmllink {
         return "<a class=\"createlink\" href=\"$link\">$linktext ?</a>";
     }
     
-
-#    if (! $destsources{$bestlink})
-#    {
-#        $bestlink=htmlpage($bestlink);
-#
-#        if (! $destsources{$bestlink})
-#        {
-#            my $cgilink = "";
-#            if (length $config{cgiurl})
-#            {
-#                $cgilink = "<a href=\"".
-#                cgiurl(
-#                    do => "create",
-#                    page => $link,
-#                    from => $lpage
-#                )."\" rel=\"nofollow\">?</a>";
-#            }
-#            return "<span class=\"createlink\">$cgilink$linktext</span>"
-#        }
-#    }
-
     $bestlink=File::Spec->abs2rel($bestlink, $page);
-    $bestlink=pagelink($bestlink, $bl_info);
+    $bestlink=$bl_info->{pagelink};
 
     if (defined $opts{anchor}) {
         $bestlink.="#".$opts{anchor};
@@ -298,20 +248,5 @@ sub htmllink {
 
     return "<a href=\"$bestlink\"@attrs>$linktext</a>";
 }
-
-=head2 bestlink
-
-Figure out the best link from the given page to the given linked page.
-
-=cut
-sub bestlink {
-    my $self  = shift;
-    my %args = @_;
-
-    my $page= $args{page};
-    my $link= $args{link};
-
-    return $self->{metadb}->bestlink($page,$link);
-} # bestlink
 
 1;

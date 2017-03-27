@@ -114,7 +114,6 @@ sub _sidebar {
     my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash
 
-    my $info = $self->{metadb}->page_or_file_info($pagename);
     my $out = $self->_make_page_related_list($c);
     return "<nav>$out</nav>\n";
 } # _sidebar
@@ -133,7 +132,6 @@ sub _rightbar {
     my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash
 
-    my $info = $self->{metadb}->page_or_file_info($pagename);
     my $total = $self->_total_pages($c);
     my $atts = $self->_make_page_attachments_list($c);
     my $out=<<EOT;
@@ -209,15 +207,17 @@ sub _make_page_related_list {
     my $self  = shift;
     my $c  = shift;
 
-    my $pagename = $c->param('cpath');
+    my $pagename = $c->param('cpath') || 'index';
     $pagename =~ s!/$!!; # remove trailing slash
+    my $info = $self->{metadb}->page_or_file_info($pagename);
+    my $current_url = $info->{pagelink};
 
-    # for this, add a leading and trailing slash to every page
-    my @pagenames = map { '/' . $_ . '/' } $self->{metadb}->pagelist();
+    # get the links to the pages
+    my @paths = $self->{metadb}->allpagelinks();
 
     my $link_list = HTML::LinkList::nav_tree(
-        current_url=>"/$pagename/",
-        paths=>\@pagenames,
+        current_url=>$current_url,
+        paths=>\@paths,
     );
 
     return $link_list;
@@ -234,12 +234,12 @@ sub _pagelist {
     my $c  = shift;
 
     my $location = $c->url_for('pagelist');
-    # for this, add a leading and trailing slash to every page
-    my @pagenames = map { '/' . $_ . '/' } $self->{metadb}->pagelist();
+    # get the links to the pages
+    my @paths = $self->{metadb}->allpagelinks();
 
     my $link_list = HTML::LinkList::full_tree(
         current_url=>$location,
-        paths=>\@pagenames,
+        paths=>\@paths,
     );
     return $link_list;
 } # _pagelist

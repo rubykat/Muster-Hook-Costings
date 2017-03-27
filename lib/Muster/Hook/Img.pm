@@ -309,7 +309,7 @@ sub process {
     my $link;
     if (! defined $params{link})
     {
-        $link = Muster::Hook::Links::pagelink($imgpage,$img_info);
+        $link = $img_info->{pagelink};
     }
     elsif ($params{link} =~ /^\w+:\/\//)
     {
