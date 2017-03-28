@@ -79,7 +79,29 @@ sub startup {
     {
         push @{$self->static->paths}, $pubdir;
     }
- 
+    # -------------------------------------------
+    # Cache
+    # -------------------------------------------
+    if (!$mojo_config->{cache_dir})
+    {
+        $mojo_config->{cache_dir} = path(Path::Tiny->cwd, "cache")->stringify;
+    }
+    my $cache_dir = path($mojo_config->{cache_dir})->absolute;
+    # create the cache dir if it's not there
+    if (!-d $cache_dir)
+    {
+        if (-d -w $cache_dir->parent->stringify)
+        {
+            mkdir $cache_dir;
+        }
+    }
+    if (!-d -w $cache_dir)
+    {
+        die "cache dir '$cache_dir' not writable";
+    }
+    push @{$self->static->paths}, $cache_dir->stringify;
+    warn "cache_dir:", $cache_dir->stringify;
+
     # -------------------------------------------
     # Pages
     # -------------------------------------------

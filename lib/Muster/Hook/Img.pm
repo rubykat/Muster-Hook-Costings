@@ -40,17 +40,13 @@ sub register {
     $self->{metadb} = $hookmaster->{metadb};
 
     # place to store and serve cached thumbnails
-    $self->{cache_dir} = 'public/cache';
-    if (!-d $self->{cache_dir})
-    {
-        mkdir $self->{cache_dir};
-    }
+    $self->{cache_dir} = $conf->{cache_dir};
     $self->{img_dir} = File::Spec->catdir($self->{cache_dir}, 'images');
     if (!-d $self->{img_dir})
     {
         mkdir $self->{img_dir};
     }
-    $self->{img_url} = '/cache/images/';
+    $self->{img_url} = $conf->{route_prefix} . 'images/';
 
     $hookmaster->add_hook('img' => sub {
             my %args = @_;
