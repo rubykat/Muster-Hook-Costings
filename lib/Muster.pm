@@ -100,7 +100,6 @@ sub startup {
         die "cache dir '$cache_dir' not writable";
     }
     push @{$self->static->paths}, $cache_dir->stringify;
-    warn "cache_dir:", $cache_dir->stringify;
 
     # -------------------------------------------
     # Pages
