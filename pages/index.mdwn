@@ -1,5 +1,0 @@
-# Muster
-
-Welcome to Muster, a personal CMS...
-
-* [docs](docs)
