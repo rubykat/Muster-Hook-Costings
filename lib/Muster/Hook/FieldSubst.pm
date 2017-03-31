@@ -68,7 +68,7 @@ sub process {
     my $leaf = $args{leaf};
     my $phase = $args{phase};
 
-    if (!$leaf->pagetype)
+    if (!$leaf->is_page)
     {
         return $leaf;
     }

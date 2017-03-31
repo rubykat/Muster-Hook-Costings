@@ -79,20 +79,21 @@ sub process {
     my @list = map { $self->{metadb}->bestlink($pagename, $_) } split ' ', $params{pagenames};
 
     # Do a naive solution first: simply include the raw text of the other pages
-    # into this page, IFF they are of the same pagetype.
+    # into this page, IFF they are of the same filetype.
     # This ought to work in most cases, if I'm sticking to Markdown for the default page type.
-    my $this_pagetype = $leaf->pagetype;
+    my $this_filetype = $leaf->filetype;
     my @in_stuff = ();
     foreach my $page (@list)
     {
         my $info = $self->{metadb}->page_or_file_info($page);
-        if ($info and $info->{pagetype} eq $this_pagetype)
+        if ($info and $info->{filetype} eq $this_filetype)
         {
             my $new_leaf = Muster::LeafFile->new(
                 pagename=>$info->{pagename},
                 parent_page=>$info->{parent_page},
                 filename=>$info->{filename},
-                pagetype=>$info->{pagetype},
+                filetype=>$info->{filetype},
+                is_page=>$info->{is_page},
                 extension=>$info->{extension},
                 name=>$info->{name},
                 title=>$info->{title},

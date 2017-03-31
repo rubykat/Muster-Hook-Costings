@@ -78,7 +78,7 @@ sub serve_page {
         $c->reply->not_found;
         return;
     }
-    if (!$info->{pagetype}) # a non-page
+    if (!$info->{is_page}) # a non-page
     {
         return $self->_serve_file($c, $info->{filename});
     }
@@ -135,7 +135,7 @@ sub serve_meta {
 =head2 serve_source
 
 Serve the source-content for a page (for debugging purposes)
-Only works for known pagetypes. (We don't want to be sending a binary file!)
+Only works for page-files. (We don't want to be sending a binary file!)
 
 =cut
 sub serve_source {
@@ -164,7 +164,7 @@ sub serve_source {
         $c->reply->not_found;
         return;
     }
-    if (!$info->{pagetype}) # a non-page
+    if (!$info->{is_page}) # a non-page
     {
         $c->reply->not_found;
         return;
@@ -235,7 +235,8 @@ sub _create_and_process_leaf {
         pagename=>$meta->{pagename},
         parent_page=>$meta->{parent_page},
         filename=>$meta->{filename},
-        pagetype=>$meta->{pagetype},
+        filetype=>$meta->{filetype},
+        is_page=>$meta->{is_page},
         extension=>$meta->{extension},
         name=>$meta->{name},
         title=>$meta->{title},

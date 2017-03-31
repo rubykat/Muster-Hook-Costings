@@ -29,10 +29,11 @@ use Lingua::EN::Titlecase;
 
 has pagename    => '';
 has parent_page => '';
+has is_page     => sub { shift->is_this_a_page };
 has name        => sub { shift->build_name };
 has title       => sub { shift->build_title };
 has filename   => sub { croak 'no filename given' };
-has pagetype   => sub { shift->build_pagetype };
+has filetype   => sub { shift->build_filetype };
 has extension  => sub { shift->build_ext };
 has pagename   => sub { shift->build_pagename };
 
@@ -130,18 +131,18 @@ sub build_title {
 Reclassify this object as a Muster::LeafFile subtype.
 If a subtype exists, cast to that subtype and return the object;
 if not, return self.
-To simplify things, pagetypes are determined by the file extension,
-and the object name will be Muster::LeafFile::$pagetype
+To simplify things, filetypes are determined by the file extension,
+and the object name will be Muster::LeafFile::$filetype
 
 =cut
 
 sub reclassify {
     my $self = shift;
 
-    my $pagetype = $self->pagetype;
-    if ($pagetype)
+    my $filetype = $self->filetype;
+    if ($filetype)
     {
-        my $subtype = __PACKAGE__ . "::" . $pagetype;
+        my $subtype = __PACKAGE__ . "::" . $filetype;
         eval "require $subtype;"; # needs to be quoted because $subtype is a variable
         $subtype->import();
         bless $self, $subtype;
@@ -164,13 +165,23 @@ sub build_name {
     my $base = basename($self->filename);
 
     # if this is a page as opposed to a non-page, delete the suffix
-    if ($self->pagetype)
+    if ($self->is_page)
     {
         # delete suffix
         $base =~ s/\.\w+$//;
     }
 
     return $base;
+}
+
+=head2 is_this_a_page
+
+By default, it is not a page. Returns undef.
+
+=cut
+sub is_this_a_page {
+    my $self = shift;
+    return undef;
 }
 
 =head2 build_pagename
@@ -185,23 +196,23 @@ sub build_pagename {
     return join '/' => grep {$_ ne ''} $self->parent_page, $self->name;
 }
 
-=head2 build_pagetype
+=head2 build_filetype
 
-Derive the pagetype for this file, if it has a known module for it.
-Otherwise, the pagetype is empty.
+Derive the filetype for this file, if it has a known module for it.
+Otherwise, the filetype is empty.
 
 =cut
-sub build_pagetype {
+sub build_filetype {
     my $self = shift;
 
     my $file=$self->filename;
 
-    # the extension is the pagetype only if there exists a Muster::LeafFile::*ext* module for it.
+    # the extension is the filetype only if there exists a Muster::LeafFile::*ext* module for it.
     if ($file =~ /\.([^.]+)$/) {
         my $pt = $1;
         my $subtype = __PACKAGE__ . "::" . $pt;
-        my $has_pagetype = eval "require $subtype;"; # needs to be quoted because $subtype is a variable
-        return $pt if $has_pagetype;
+        my $has_filetype = eval "require $subtype;"; # needs to be quoted because $subtype is a variable
+        return $pt if $has_filetype;
     }
     return '';
 }
@@ -246,13 +257,14 @@ The meta-data extracted from the file.
 sub build_meta {
     my $self    = shift;
 
-    # there is always the default information
+    # There is always the default information
     # of pagename, filename etc.
     my $meta = {
         pagename=>$self->pagename,
         parent_page=>$self->parent_page,
         filename=>$self->filename,
-        pagetype=>$self->pagetype,
+        filetype=>$self->filetype,
+        is_page=>$self->is_page,
         extension=>$self->extension,
         name=>$self->name,
         title=>$self->derive_title,

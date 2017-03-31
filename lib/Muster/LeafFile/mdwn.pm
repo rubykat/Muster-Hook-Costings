@@ -5,14 +5,6 @@ package Muster::LeafFile::mdwn;
 
 Muster::LeafFile::mdwn - a Markdown file in a Muster content tree
 
-=head1 SYNOPSIS
-
-    use Muster::LeafFile;
-    my $file = Muster::LeafFile->new(
-        filename => 'foo.md'
-    );
-    my $html = $file->html;
-
 =head1 DESCRIPTION
 
 File nodes represent files in a Muster::Content content tree.
@@ -29,32 +21,20 @@ use Encode qw{encode};
 use Hash::Merge;
 # use a fast YAML
 use YAML::XS;
-use Lingua::EN::Titlecase;
 
-sub derive_title {
+sub is_this_a_page {
     my $self = shift;
 
-    my $name = $self->name;
-    $name =~ s/_/ /g;
-    my $tc = Lingua::EN::Titlecase->new($name);
-    return $tc->title();
+    return 1;
 }
 
 sub build_meta {
     my $self = shift;
 
-    # there is always the default information
-    # of pagename, filename etc.
-    my $meta = {
-        pagename=>$self->pagename,
-        parent_page=>$self->parent_page,
-        filename=>$self->filename,
-        pagetype=>$self->pagetype,
-        extension=>$self->extension,
-        name=>$self->name,
-        title=>$self->derive_title,
-        wordcount=>$self->wordcount,
-    };
+    my $meta = $self->SUPER::build_meta();
+
+    # add the wordcount to the default meta
+    $meta->{wordcount} = $self->wordcount;
 
     # if there's no YAML in the file then there's no further meta-data
     if (!$self->has_yaml())

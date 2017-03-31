@@ -36,7 +36,7 @@ Set the defaults for the object if they are not defined already.
 sub init {
     my $self = shift;
 
-    $self->{primary_fields} = [qw(title name pagetype pagelink extension filename parent_page)];
+    $self->{primary_fields} = [qw(title name filetype is_page pagelink extension filename parent_page)];
     if (!defined $self->{metadb_db})
     {
         # give a default name
@@ -213,7 +213,7 @@ sub allpagelinks {
         return undef;
     }
 
-    my $pagelinks = $self->_do_one_col_query("SELECT pagelink FROM pagefiles WHERE pagetype != '' ORDER BY page;");
+    my $pagelinks = $self->_do_one_col_query("SELECT pagelink FROM pagefiles WHERE is_page IS NOT NULL ORDER BY page;");
     return @{$pagelinks};
 } # allpagelinks
 
@@ -404,7 +404,7 @@ sub _prepare {
 
 Create the initial tables in the database:
 
-pagefiles: (page, title, name, pagetype, ext, filename, parent_page)
+pagefiles: (page, title, name, filetype, is_page, filename, parent_page)
 links: (page, links_to)
 deepfields: (page, field, value)
 
@@ -496,8 +496,8 @@ sub _generate_derived_tables {
     # Insert values for all the pages
     my $transaction_on = 0;
     my $num_trans = 0;
-    my @pagenames = $self->_get_all_pagenames();
-    foreach my $page (@pagenames)
+    my @pagefiles = $self->_get_all_pagefiles();
+    foreach my $page (@pagefiles)
     {
         if (!$transaction_on)
         {
@@ -679,7 +679,7 @@ sub _get_all_pagenames {
     my $self = shift;
 
     my $dbh = $self->{dbh};
-    my $pages = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE pagetype != '' ORDER BY page;");
+    my $pages = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE is_page IS NOT NULL ORDER BY page;");
 
     return @{$pages};
 } # _get_all_pagenames
@@ -753,7 +753,7 @@ sub _get_children_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $children = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND pagetype != '';");
+    my $children = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND is_page IS NOT NULL;");
 
     return $children;
 } # _get_children_for_page
@@ -772,7 +772,7 @@ sub _get_attachments_for_page {
 
     return unless $self->{dbh};
     my $dbh = $self->{dbh};
-    my $attachments = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND pagetype = '';");
+    my $attachments = $self->_do_one_col_query("SELECT page FROM pagefiles WHERE parent_page = '$pagename' AND is_page IS NULL;");
 
     return $attachments;
 } # _get_attachments_for_page
@@ -829,9 +829,9 @@ sub _get_page_meta {
     {
         return undef;
     }
-    if ($meta->{pagetype})
+    if ($meta->{filetype})
     {
-        # now the rest of the meta, if this is a page
+        # now the rest of the meta, if this has meta
         $q = "SELECT * FROM flatfields WHERE page = ?;";
 
         $sth = $self->_prepare($q);
@@ -851,10 +851,14 @@ sub _get_page_meta {
             return undef;
         }
 
-        # get multi-valued fields from other tables
-        $meta->{children} = $self->_get_children_for_page($pagename);
-        $meta->{attachments} = $self->_get_attachments_for_page($pagename);
-        $meta->{links} = $self->_get_links_for_page($pagename);
+        # non-pages don't have links, children, or attachments
+        if ($meta->{is_page})
+        {
+            # get multi-valued fields from other tables
+            $meta->{children} = $self->_get_children_for_page($pagename);
+            $meta->{attachments} = $self->_get_attachments_for_page($pagename);
+            $meta->{links} = $self->_get_links_for_page($pagename);
+        }
     }
 
     return $meta;
@@ -946,7 +950,7 @@ sub _total_pages {
 
     my $dbh = $self->{dbh};
 
-    my $q = "SELECT COUNT(*) FROM pagefiles WHERE pagetype != '';";
+    my $q = "SELECT COUNT(*) FROM pagefiles WHERE is_page IS NOT NULL;";
 
     my $sth = $self->_prepare($q);
     if (!$sth)
@@ -1040,7 +1044,7 @@ sub _pagelink {
         $link = $self->{route_prefix} . $link;
     }
     # if this is a page, it needs a slash added to it
-    if ($info->{pagetype})
+    if ($info->{is_page})
     {
         $link .= '/';
     }
@@ -1174,39 +1178,37 @@ sub _add_page_data {
     #
     # This is for all the meta-data about a page
     # apart from multi-valued things like links
-    # Only add in real pages, not non-pages
+    # Add both pages and non-pages, because non-pages like images
+    # can also have extra meta-data.
     # ------------------------------------------------
-    if ($meta{pagetype})
+    foreach my $field (sort keys %meta)
     {
-        foreach my $field (sort keys %meta)
+        if ($field ne 'links'
+                and $field !~ /^_/)
         {
-            if ($field ne 'links'
-                    and $field !~ /^_/)
+            my $value = $meta{$field};
+
+            next unless defined $value;
+            if (ref $value eq 'ARRAY')
             {
-                my $value = $meta{$field};
+                $value = join("|", @{$value});
+            }
+            elsif (ref $value)
+            {
+                $value = Dump($value);
+                warn __PACKAGE__, " unexpected value for $field:", $value;
+            }
 
-                next unless defined $value;
-                if (ref $value eq 'ARRAY')
-                {
-                    $value = join("|", @{$value});
-                }
-                elsif (ref $value)
-                {
-                    $value = Dump($value);
-                    warn __PACKAGE__, " unexpected value:", $value;
-                }
-
-                $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";
-                my $sth = $self->_prepare($q);
-                if (!$sth)
-                {
-                    croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
-                }
-                $ret = $sth->execute($pagename, $field, $value);
-                if (!$ret)
-                {
-                    croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
-                }
+            $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";
+            my $sth = $self->_prepare($q);
+            if (!$sth)
+            {
+                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+            }
+            $ret = $sth->execute($pagename, $field, $value);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
             }
         }
     }

@@ -54,7 +54,7 @@ sub do_directives {
     my $call = $args{call};
 
     # do nothing if this is not a page
-    if (!$leaf->pagetype)
+    if (!$leaf->is_page)
     {
         return $leaf;
     }

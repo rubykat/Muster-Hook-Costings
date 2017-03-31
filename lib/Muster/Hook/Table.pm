@@ -182,7 +182,6 @@ sub genrow ($@) {
 
     my $page=$params{page};
     my $destpage=$params{destpage};
-    ##my $type=pagetype($pagesources{$page});
 
     my @ret;
     push @ret, "\t\t<tr>";
