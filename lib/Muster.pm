@@ -77,7 +77,8 @@ sub startup {
     }
     if (-d $pubdir)
     {
-        push @{$self->static->paths}, $pubdir;
+        # this takes priority over the default public dir
+        unshift @{$self->static->paths}, $pubdir;
     }
     # -------------------------------------------
     # Cache
