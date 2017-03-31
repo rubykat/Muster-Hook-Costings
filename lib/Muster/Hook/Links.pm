@@ -94,8 +94,6 @@ sub process {
 
     my $content = $leaf->cooked();
     my $page = $leaf->pagename;
-    ## TODO: Fix destpage for page inclusions
-    my $destpage = $page;
 
     if ($phase eq $Muster::Hooks::PHASE_SCAN)
     {
@@ -123,13 +121,13 @@ sub process {
 				? "[[$2|$3".(defined $4 ? "#$4" : "")."]]" 
 				: $self->is_externallink($page, $3, $4)
 					? $self->externallink($3, $4, $2)
-					: $self->htmllink($page, $destpage, $self->linkpage($3),
+					: $self->htmllink($page, $self->linkpage($3),
 						anchor => $4, linktext => $2))
 			: ( $1 
 				? "[[$3".(defined $4 ? "#$4" : "")."]]"
 				: $self->is_externallink($page, $3, $4)
 					? $self->externallink($3, $4)
-					: $self->htmllink($page, $destpage, $self->linkpage($3),
+					: $self->htmllink($page, $self->linkpage($3),
 						anchor => $4))
 	}eg;
         $leaf->{cooked} = $content;
@@ -188,8 +186,7 @@ sub externallink {
 
 sub htmllink {
     my $self = shift;
-    my $lpage=shift; # the page doing the linking
-    my $page=shift; # the page that will contain the link (different for inline)
+    my $page=shift;
     my $link=shift;
     my %opts=@_;
 
@@ -198,7 +195,7 @@ sub htmllink {
     my $bestlink;
     if (! $opts{forcesubpage})
     {
-        $bestlink=$self->{metadb}->bestlink(page=>$lpage, link=>$link);
+        $bestlink=$self->{metadb}->bestlink($lpage, $link);
     }
     else
     {

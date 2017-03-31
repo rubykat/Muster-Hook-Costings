@@ -237,7 +237,7 @@ sub total_pages {
 
 =head2 page_exists
 
-Does this page exist in the database?
+Does this page/file exist in the database?
 
 =cut
 
