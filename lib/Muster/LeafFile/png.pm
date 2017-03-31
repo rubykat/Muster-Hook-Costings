@@ -1,14 +1,14 @@
-package Muster::LeafFile::jpg;
+package Muster::LeafFile::png;
 
-#ABSTRACT: Muster::LeafFile::jpg - a JPEG file in a Muster content tree
+#ABSTRACT: Muster::LeafFile::png - a PNG file in a Muster content tree
 =head1 NAME
 
-Muster::LeafFile::jpg - a JPEG file in a Muster content tree
+Muster::LeafFile::png - a PNG file in a Muster content tree
 
 =head1 DESCRIPTION
 
 File nodes represent files in a Muster::Content content tree.
-This is a JPEG file.
+This is a PNG file.
 
 =cut
 
@@ -51,7 +51,7 @@ sub build_meta {
     {
         $meta->{tags} = $info->{Keywords};
     }
-    
+
     # There are SOOOOOO many fields in EXIF data, just remember
     # the ones which I am interested in.
     foreach my $field (qw(Artist CameraType CreateDate DateTimeOriginal FileSize Flash ImageHeight ImageSize ImageWidth License Megapixels))
