@@ -106,6 +106,10 @@ sub get_field_value {
     {
 	return "{{\$${field}}}";
     }
+
+    # force all fields to lower-case
+    $field = lc($field);
+
     my $value = '';
     if ($field eq 'page') # page is pagename
     {
@@ -150,6 +154,10 @@ sub get_other_page_field_value {
     {
 	return "{{\$${other_page}#${field}}}";
     }
+
+    # force all fields to lower-case
+    $field = lc($field);
+
     my $value = '';
     my $use_page = $self->{metadb}->bestlink($leaf->pagename, $other_page);
     # $use_page will be blank if the page doesn't exist

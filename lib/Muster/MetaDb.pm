@@ -1187,6 +1187,8 @@ sub _add_page_data {
                 and $field !~ /^_/)
         {
             my $value = $meta{$field};
+            # force all field-names to be lower-case
+            my $fieldname = lc($field);
 
             next unless defined $value;
             if (ref $value eq 'ARRAY')
@@ -1205,7 +1207,7 @@ sub _add_page_data {
             {
                 croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
             }
-            $ret = $sth->execute($pagename, $field, $value);
+            $ret = $sth->execute($pagename, $fieldname, $value);
             if (!$ret)
             {
                 croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
