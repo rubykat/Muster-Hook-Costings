@@ -259,13 +259,19 @@ The meta-data extracted from the file.
 sub build_meta {
     my $self    = shift;
 
-    # The default date of the file is the ctime, which is NOT the creation-time,
-    # but the modification time of the inode; which may coincidentally be the
-    # same as the creation time, but might not be. However, it's the closest
-    # that Unixlike file systems have.
+    # Unix filesystems do NOT store the file creation time.  The default date
+    # of a file is the mtime (the last modification time), so that's what we'll
+    # have to live with.
+
+    # NOTE: Many people think that the ctime is the creation time, but it is
+    # the "change time", which is the last modification of the inode. This will
+    # either be the same as the mtime, or more recent than the mtime, if the
+    # file permissions have been changed without changing the content.  A file
+    # may store its creation-date in its meta-data, but that will depend on the
+    # filetype of that particular file, so we can't deal with it here.
 
     my $st = stat($self->filename);
-    my $date = strftime('%Y-%m-%d %H:%M', localtime($st->ctime));
+    my $date = strftime('%Y-%m-%d %H:%M', localtime($st->mtime));
 
     # There is always the default information
     # of pagename, filename etc.
