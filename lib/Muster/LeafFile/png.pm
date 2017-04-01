@@ -39,9 +39,9 @@ sub build_meta {
     my $description = '';
     foreach my $field (qw(Caption-Abstract Comment ImageDescription UserComment))
     {
-        if (exists $info->{field} and $info->{$field} and !$description)
+        if (exists $info->{$field} and $info->{$field} and !$description)
         {
-            $description = $info->{field};
+            $description = $info->{$field};
         }
     }
     $meta->{description} = $description if $description;
