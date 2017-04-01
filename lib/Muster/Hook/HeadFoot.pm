@@ -1,4 +1,5 @@
 package Muster::Hook::HeadFoot;
+
 use Mojo::Base 'Muster::Hook::Directives';
 use Muster::LeafFile;
 use Muster::Hooks;

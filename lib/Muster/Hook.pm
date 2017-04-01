@@ -1,4 +1,5 @@
 package Muster::Hook;
+
 use Mojo::Base -base;
 use Muster::LeafFile;
 

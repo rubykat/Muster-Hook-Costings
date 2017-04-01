@@ -1,12 +1,11 @@
 package Muster::Hook::Shortcut;
+
 use Mojo::Base 'Muster::Hook::Directives';
 use Muster::LeafFile;
 use Muster::Hooks;
 
 use Carp 'croak';
 use YAML::Any;
-
-=encoding utf8
 
 =head1 NAME
 

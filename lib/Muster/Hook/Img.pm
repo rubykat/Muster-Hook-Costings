@@ -1,5 +1,4 @@
 package Muster::Hook::Img;
-=encoding utf8
 
 =head1 NAME
 

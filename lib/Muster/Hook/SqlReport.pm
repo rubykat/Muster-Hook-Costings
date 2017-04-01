@@ -1,7 +1,5 @@
 package Muster::Hook::SqlReport;
 
-=encoding utf8
-
 =head1 NAME
 
 Muster::Hook::SqlReport - Muster SQL-report directive
@@ -135,6 +133,7 @@ sub DESTROY {
 1;
 # =================================================================
 package SQLite::Work::Muster;
+
 use SQLite::Work;
 use Text::NeatTemplate;
 use POSIX;

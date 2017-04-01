@@ -1,6 +1,13 @@
 package Muster::Generator;
 
 # ABSTRACT: Muster::Generator - generates boilerplate for muster webapp
+
+=head1 NAME
+
+Muster::Generator - generates boilerplate for muster webapp
+
+=cut
+
 use Mojo::Base 'Mojolicious::Command';
 
 # store everything in files

@@ -1,11 +1,10 @@
 package Muster::Hook::Include;
+
 use Mojo::Base 'Muster::Hook::Directives';
 use Muster::LeafFile;
 use Muster::Hooks;
 
 use Carp 'croak';
-
-=encoding utf8
 
 =head1 NAME
 
