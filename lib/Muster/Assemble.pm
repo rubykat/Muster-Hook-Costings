@@ -240,6 +240,7 @@ sub _create_and_process_leaf {
         extension=>$meta->{extension},
         name=>$meta->{name},
         title=>$meta->{title},
+        date=>$meta->{date},
         meta=>$meta,
     );
     $leaf = $leaf->reclassify();

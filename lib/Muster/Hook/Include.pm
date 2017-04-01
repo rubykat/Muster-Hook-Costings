@@ -96,6 +96,7 @@ sub process {
                 extension=>$info->{extension},
                 name=>$info->{name},
                 title=>$info->{title},
+                date=>$info->{date},
                 meta=>$info,
             );
             $new_leaf = $new_leaf->reclassify();

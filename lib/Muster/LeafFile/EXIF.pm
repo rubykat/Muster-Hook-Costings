@@ -43,6 +43,42 @@ sub build_meta {
         }
     }
     $meta->{description} = $description if $description;
+ 
+    # There are multiple fields which could be used as a file content creator.
+    # Check through them until you find a non-empty one.
+    my $creator = '';
+    foreach my $field (qw(Author Artist Creator))
+    {
+        if (exists $info->{$field} and $info->{$field} and !$creator)
+        {
+            $creator = $info->{$field};
+        }
+    }
+    $meta->{creator} = $creator if $creator;
+
+    # There are multiple fields which could be used as a copyright notice.
+    # Check through them until you find a non-empty one.
+    my $copyright = '';
+    foreach my $field (qw(License Rights))
+    {
+        if (exists $info->{$field} and $info->{$field} and !$copyright)
+        {
+            $copyright = $info->{$field};
+        }
+    }
+    $meta->{copyright} = $copyright if $copyright;
+
+    # There are multiple fields which could be used as a file date.
+    # Check through them until you find a non-empty one.
+    my $date = '';
+    foreach my $field (qw(CreateDate DateTimeOriginal Date PublishedDate PublicationDate))
+    {
+        if (exists $info->{$field} and $info->{$field} and !$date)
+        {
+            $date = $info->{$field};
+        }
+    }
+    $meta->{date} = $date if $date;
 
     # Use a consistent naming for tag fields.
     # Combine the tag-like fields together.
@@ -67,19 +103,15 @@ sub build_meta {
     # There are SOOOOOO many fields in EXIF data, just remember
     # the ones which I am interested in.
     foreach my $field (qw(
-Artist
-Author
 CameraType
-CreateDate
-DateTimeOriginal
 FileSize
 Flash
 ImageHeight
 ImageSize
 ImageWidth
-License
 Megapixels
 PageCount
+Source
 Title
 ))
     {

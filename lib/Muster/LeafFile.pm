@@ -24,6 +24,8 @@ use Mojo::Base -base;
 use Carp;
 use Mojo::Util      'decode';
 use File::Basename 'basename';
+use File::stat;
+use POSIX qw(strftime);
 use YAML::Any;
 use Lingua::EN::Titlecase;
 
@@ -257,6 +259,14 @@ The meta-data extracted from the file.
 sub build_meta {
     my $self    = shift;
 
+    # The default date of the file is the ctime, which is NOT the creation-time,
+    # but the modification time of the inode; which may coincidentally be the
+    # same as the creation time, but might not be. However, it's the closest
+    # that Unixlike file systems have.
+
+    my $st = stat($self->filename);
+    my $date = strftime('%Y-%m-%d %H:%M', localtime($st->ctime));
+
     # There is always the default information
     # of pagename, filename etc.
     my $meta = {
@@ -268,6 +278,7 @@ sub build_meta {
         extension=>$self->extension,
         name=>$self->name,
         title=>$self->derive_title,
+        date=>$date,
     };
 
     return $meta;
