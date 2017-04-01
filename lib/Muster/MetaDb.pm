@@ -201,6 +201,7 @@ sub pagelist {
 =head2 allpagelinks
 
 Query the database, return a list of all pages' pagelinks.
+This does not include _Header or _Footer pages.
 
 =cut
 
@@ -213,7 +214,7 @@ sub allpagelinks {
         return undef;
     }
 
-    my $pagelinks = $self->_do_one_col_query("SELECT pagelink FROM pagefiles WHERE is_page IS NOT NULL ORDER BY page;");
+    my $pagelinks = $self->_do_one_col_query("SELECT pagelink FROM pagefiles WHERE is_page IS NOT NULL AND NAME NOT GLOB '_*' ORDER BY page;");
     return @{$pagelinks};
 } # allpagelinks
 
