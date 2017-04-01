@@ -90,7 +90,7 @@ sub process {
     {
         if ($image eq 'defaults' and $phase eq $Muster::Hooks::PHASE_SCAN)
         {
-            $leaf->{meta}->{img_defaults} = Dump(\%params);
+            $leaf->{meta}->{img_defaults} = Dump(@p);
         }
         return "";
     }
@@ -102,18 +102,13 @@ sub process {
     if (exists $leaf->{meta}->{img_defaults}
             and defined $leaf->{meta}->{img_defaults})
     {
-        if (!ref $leaf->{meta}->{img_defaults})
+        my @d = Load($leaf->{meta}->{img_defaults});
+        my %d = @d;
+        foreach my $key (keys %d)
         {
-            $leaf->{meta}->{img_defaults} = Load($leaf->{meta}->{img_defaults});
-        }
-        if (ref $leaf->{meta}->{img_defaults} eq 'HASH')
-        {
-            foreach my $key (keys %{$leaf->{meta}->{img_defaults}})
+            if ($key ne 'defaults' and !exists $params{$key})
             {
-                if (!exists $params{$key})
-                {
-                    $params{$key} = $leaf->{meta}->{img_defaults}->{$key};
-                }
+                $params{$key} = $d{$key};
             }
         }
     }
@@ -316,15 +311,22 @@ sub process {
     {
         $imgtag='<a href="'.$link.'">'.$imgtag.'</a>';
     }
-
-    if (exists $params{caption})
+    if (!exists $params{caption} and exists $img_info->{description})
     {
-        return '<table class="img'.
-        (exists $params{align} ? " align-$params{align}" : "").
-        '">'.
-        '<caption>'.$params{caption}.'</caption>'.
-        '<tr><td>'.$imgtag.'</td></tr>'.
-        '</table>';
+        $params{caption} = $img_info->{description};
+    }
+
+    if (exists $params{caption} and $params{caption})
+    {
+        my $style = '';
+        $style = sprintf('width: %dpx;', $dwidth + 6) if defined $dwidth; # give it a bit of a margin
+
+        return <<EOT;
+<div style="$style" class="$params{class}">
+$imgtag<br/>
+<span class="caption">$params{caption}</span>
+</div>
+EOT
     }
     else
     {
