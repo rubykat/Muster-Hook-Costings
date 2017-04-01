@@ -195,11 +195,11 @@ sub htmllink {
     my $bestlink;
     if (! $opts{forcesubpage})
     {
-        $bestlink=$self->{metadb}->bestlink($lpage, $link);
+        $bestlink=$self->{metadb}->bestlink($page, $link);
     }
     else
     {
-        $bestlink="$lpage/".lc($link);
+        $bestlink="$page/".lc($link);
     }
     # assert: $bestlink contains the page to link to
     my $page_exists = $self->{metadb}->page_exists($bestlink);
