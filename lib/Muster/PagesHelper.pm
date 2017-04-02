@@ -132,10 +132,19 @@ sub _rightbar {
     my $pagename = $c->param('cpath');
     $pagename =~ s!/$!!; # remove trailing slash
 
+    my $src_dest_url = $c->url_for("/_src/$pagename/");
+    my $src_dest_label = 'Source';
+    my $current_url = $c->req->url->to_abs;
+    if ($current_url =~ /_src/) # we're already looking at Source
+    {
+        $src_dest_url =~ s/_src\///;
+        $src_dest_label = "Dest";
+    }
     my $total = $self->_total_pages($c);
     my $atts = $self->_make_page_attachments_list($c);
     my $out=<<EOT;
 <p class="total">$total pages</p>
+<p class="srcdest"><a href="$src_dest_url">$src_dest_label</a></p>
 $atts
 EOT
         return $out;
