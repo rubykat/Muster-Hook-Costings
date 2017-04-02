@@ -158,6 +158,63 @@ sub query {
     return $self->_do_one_col_query($query);
 } # query
 
+=head2 pagespec_translate
+
+Attempt to translate an IkiWiki-style pagespec into an SQL condition.
+
+=cut
+sub pagespec_translate {
+    my $self = shift;
+    my $spec=shift;
+
+    # Convert spec to SQL.
+    my $sql="";
+    while ($spec=~m{
+            \s*		# ignore whitespace
+            (		# 1: match a single word
+                \!		# !
+                |
+                \(		# (
+                        |
+                        \)		# )
+                |
+                \w+\([^\)]*\)	# command(params)
+            |
+            [^\s()]+	# any other text
+        )
+        \s*		# ignore whitespace
+    }gx)
+    {
+        my $word=$1;
+        if (lc $word eq 'and')
+        {
+            $sql.=' AND';
+        }
+        elsif (lc $word eq 'or')
+        {
+            $sql.=' OR';
+        }
+        elsif ($word eq '!')
+        {
+            $sql.=' NOT';
+        }
+        elsif ($word eq "(" || $word eq ")")
+        {
+            $sql.=' '.$word;
+        }
+        elsif ($word =~ /^(\w+)\((.*)\)$/)
+        {
+            # can't deal with functions, skip it
+        }
+        else
+        {
+            $sql.=" page GLOB '$word'";
+        }
+    } # while
+
+    return $sql;
+} # pagespec_translate
+
 =head2 query_pagespec
 
 Do a query using an IkiWiki-style pagespec.
@@ -174,7 +231,7 @@ sub query_pagespec {
     {
         return undef;
     }
-    my $where = $self->_pagespec_translate($spec);
+    my $where = $self->pagespec_translate($spec);
     my $query = "SELECT page FROM pagefiles WHERE ($where);";
 
     return $self->_do_one_col_query($query);
@@ -1238,63 +1295,6 @@ sub _delete_page_from_db {
 
     return 1;
 } # _delete_page_from_db
-
-=head2 _pagespec_translate
-
-Attempt to translate an IkiWiki-style pagespec into an SQL condition.
-
-=cut
-sub _pagespec_translate {
-    my $self = shift;
-    my $spec=shift;
-
-    # Convert spec to SQL.
-    my $sql="";
-    while ($spec=~m{
-            \s*		# ignore whitespace
-            (		# 1: match a single word
-                \!		# !
-                |
-                \(		# (
-                        |
-                        \)		# )
-                |
-                \w+\([^\)]*\)	# command(params)
-            |
-            [^\s()]+	# any other text
-        )
-        \s*		# ignore whitespace
-    }gx)
-    {
-        my $word=$1;
-        if (lc $word eq 'and')
-        {
-            $sql.=' AND';
-        }
-        elsif (lc $word eq 'or')
-        {
-            $sql.=' OR';
-        }
-        elsif ($word eq '!')
-        {
-            $sql.=' NOT';
-        }
-        elsif ($word eq "(" || $word eq ")")
-        {
-            $sql.=' '.$word;
-        }
-        elsif ($word =~ /^(\w+)\((.*)\)$/)
-        {
-            # can't deal with functions, skip it
-        }
-        else
-        {
-            $sql.=" page GLOB '$word'";
-        }
-    } # while
-
-    return $sql;
-} # _pagespec_translate
 
 sub DESTROY {
     my $self = shift;
