@@ -119,7 +119,7 @@ sub include_a_page {
     my $self = shift;
     my $new_leaf = shift;
 
-    my $content = $new_leaf->raw;
+    my $content = $new_leaf->cooked;
     if ($content =~ /\[\[\!includepage/)
     {
         # the included page may have an includepage directive in it!
@@ -128,13 +128,14 @@ sub include_a_page {
 
             return $self->process(%args);
         };
-        $content = $self->do_directives(
+        $new_leaf = $self->do_directives(
             no_scan=>1,
             directive=>'includepage',
             call=>$cb,
             leaf=>$new_leaf,
             phase=>$Muster::Hooks::PHASE_BUILD,
         );
+        $content = $new_leaf->cooked;
     }
     return $content;
 } # include_a_page
