@@ -44,6 +44,7 @@ Hooks are currently in format phase, where the page has already been converted t
 =cut
 
 const our $PHASE_SCAN => 'scan';
+const our $PHASE_POST_SCAN => 'post_scan';
 const our $PHASE_BUILD => 'build';
 const our $PHASE_FILTER => 'filter';
 

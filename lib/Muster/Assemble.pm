@@ -87,7 +87,7 @@ sub serve_page {
         return $c->redirect_to("/${pagename}/");
     }
 
-    my $leaf = $self->_create_and_process_leaf($info);
+    my $leaf = $self->_create_and_process_leaf(controller=>$c,meta=>$info);
 
     my $html = $leaf->html();
     unless (defined $html)
@@ -170,7 +170,7 @@ sub serve_source {
         return;
     }
 
-    my $leaf = $self->_create_and_process_leaf($info);
+    my $leaf = $self->_create_and_process_leaf(controller=>$c,meta=>$info);
 
     my $content = $leaf->raw();
     unless (defined $content)
@@ -223,13 +223,15 @@ sub _serve_file {
 Create and process a leaf (which contains meta-data and content).
 This leaf data comes from the database (apart from the content).
     
-    $leaf = $self->_create_and_process_leaf($meta);
+    $leaf = $self->_create_and_process_leaf(controller=>$c,meta=>$meta);
 
 =cut
 
 sub _create_and_process_leaf {
     my $self = shift;
-    my $meta = shift;
+    my %args = @_;
+    my $c = $args{controller};
+    my $meta = $args{meta};
 
     my $leaf = Muster::LeafFile->new(
         pagename=>$meta->{pagename},
@@ -249,7 +251,9 @@ sub _create_and_process_leaf {
         croak "ERROR: leaf did not reclassify\n";
     }
 
-    return $self->{hookmaster}->run_hooks(leaf=>$leaf,phase=>$Muster::Hooks::PHASE_BUILD);
+    return $self->{hookmaster}->run_hooks(leaf=>$leaf,
+        controller=>$c,
+        phase=>$Muster::Hooks::PHASE_BUILD);
 } # _create_and_process_leaf
 1;
 # end of Muster::Assemble

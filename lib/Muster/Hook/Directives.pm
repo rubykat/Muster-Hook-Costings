@@ -148,7 +148,7 @@ sub do_directives {
             if ($phase eq $Muster::Hooks::PHASE_BUILD) # not scanning
             {
                 $ret=eval {
-                    $call->(leaf=>$leaf, phase=>$phase, params=>\@params);
+                    $call->(%args, params=>\@params);
                 };
                 if ($@)
                 {
@@ -163,7 +163,7 @@ sub do_directives {
             else # scanning
             {
                 eval {
-                    $call->(leaf=>$leaf, phase=>$phase, params=>\@params);
+                    $call->(%args, params=>\@params);
                 };
                 $ret="";
             }

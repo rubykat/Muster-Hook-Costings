@@ -58,19 +58,19 @@ sub register {
         }
     }
 
-    my $callback = sub {
-        my %args = @_;
-
-        return $self->process(%args);
-    };
     $hookmaster->add_hook('sqlreport' => sub {
             my %args = @_;
 
             return $self->do_directives(
                 no_scan=>1,
                 directive=>'sqlreport',
-                call=>$callback,
-                %args);
+                call=>sub {
+                    my %args2 = @_;
+
+                    return $self->process(%args2);
+                },
+                %args,
+            );
         },
     );
     return $self;
@@ -85,6 +85,7 @@ sub process {
     my @p = @{$args{params}};
     my %params = @p;
 
+
     my $page = $leaf->pagename;
     foreach my $p (qw(database table where))
     {
@@ -98,9 +99,20 @@ sub process {
 	croak (sprintf('sqlreport: database %s does not exist',
 		$params{database}));
     }
+
+    # if the report has an ID, enable pagination
+    my $c = $args{controller}; # build-phase has a controller
+    my $n = 1;
+    my $limit = 0;
+    if (exists $params{report_id})
+    {
+        $n = $c->param("n_".$params{report_id}) || 1;
+        $limit = $params{limit} || 20;
+    }
+
     my $out = '';
 
-    $out = $self->{databases}->{$params{database}}->do_report(%params, master_page=>$page);
+    $out = $self->{databases}->{$params{database}}->do_report(%params,page=>$n,limit=>$limit);
 
     if ($params{ltemplate}
         and $out)
@@ -190,6 +202,7 @@ sub print_select {
 	sort_by=>\@sort_by,
 	num_pages=>$num_pages,
 	);
+    my $buttons = $self->make_pagination(%args);
     my $main_title = ($args{title} ? $args{title}
 	: "$table $args{command} result");
     my $title = ($args{limit} ? "$main_title ($page)"
@@ -200,18 +213,21 @@ sub print_select {
 	$title =~ s/ & / &amp; /g;
     }
     my @result = ();
+    push @result, $buttons if ($args{report_style} ne 'bare');
     if ($args{report_style} ne 'bare'
 	    and $args{report_style} ne 'compact'
 	    and $args{total} > 1)
     {
+        my $summary = '';
 	if ($count == $args{total})
 	{
-	    push @result, "<p>$args{total} rows match.</p>\n";
+	    $summary = "$args{total} rows match.\n";
 	}
 	else
 	{
-	    push @result, "<p>$count rows displayed of $args{total}.</p>\n";
+	    $summary = "$count rows displayed of $args{total}. Page $page of $num_pages.\n";
 	}
+        push @result, "<p>$summary</p>\n";
     }
     push @result, $res_tab;
     if ($args{limit} and $args{report_style} eq 'full')
@@ -242,34 +258,10 @@ $tab2
 EOT
 	}
     }
+    push @result, $buttons if ($args{report_style} ne 'bare');
 
     # prepend the message
     unshift @result, "<p><i>$self->{message}</i></p>\n", if $self->{message};
-
-    # append the prev-next links, if any
-    if ($args{prev_file} or $args{next_file})
-    {
-	my $prev_label = $args{prev_label};
-	my $next_label = $args{next_label};
-	my %pn_hash = (
-		       prev_file => $args{prev_file},
-		       prev_label => $prev_label,
-		       next_file => $args{next_file},
-		       next_label => $next_label,
-		      );
-	my $pn_template = ($args{prev_next_template}
-			   ? $args{prev_next_template}
-			   : '<hr/>
-			   <p>{?prev_file <a href="[$prev_file]">[$prev_label]</a>}
-			   {?next_file <a href="[$next_file]">[$next_label]</a>}
-			   </p>
-			   '
-			  );
-	my $pn_templ = $self->get_template($pn_template);
-	my $pn_str = $self->{_tobj}->fill_in(data_hash=>\%pn_hash,
-					     template=>$pn_templ);
-	push @result, $pn_str;
-    }
 
     my $contents = join('', @result);
     my $out = $template;
@@ -389,4 +381,42 @@ EOT
     return $out;
 } # do_report
 
+=head2 make_pagination
+
+Make the buttons for the pagination.
+
+=cut
+sub make_pagination {
+    my $self = shift;
+    my %args = @_;
+    my $page = $args{page};
+    my $limit = $args{limit};
+    my $total = $args{total};
+    my $report_id = $args{report_id};
+
+    my $num_pages = ($limit ? ceil($total / $limit) : 0);
+
+    if (!$report_id or !$limit)
+    {
+        return "";
+    }
+
+    # if we leave the "this page" part of the url blank, it defaults to the current page,
+    # which is just what we want
+
+    my $out=<<EOT;
+<table class="pagination"><tr>
+EOT
+    for (my $i=1; $i <= $num_pages; $i++)
+    {
+        my $link = sprintf('<a href="?n_%s=%d"> %d </a>', $report_id, $i, $i);
+        $link = "<strong> $i </strong>" if ($i == $page);
+        $out .= "<td>$link</td>\n";
+    }
+    $out.=<<EOT;
+</tr></table>
+EOT
+
+    return $out;
+} # make_pagination
 1;
