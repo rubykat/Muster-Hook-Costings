@@ -276,12 +276,12 @@ sub _calculate_overheads {
     my $self = shift;
     my $retail = shift;
 
-    # Etsy fees are 20c per listing, plus 3.5% commission
+    # Etsy fees are 20c US per listing, plus 3.5% commission
     # Etsy Direct Checkout fees are 25c per item, plus 4% of item cost
     # Paypal ... is a bit confusing. 3.5% plus 30c per transaction?
-    my $overheads = 0.2 + ($retail * 0.035)
-    + 0.25 + ($retail * 0.04)
-    + 0.3 + ($retail * 0.035);
+    my $overheads = 0.26 + ($retail * 0.035)
+    + 0.30 + ($retail * 0.04)
+    + 0.35 + ($retail * 0.035);
 
     return $overheads;
 } # _calculate_overheads
