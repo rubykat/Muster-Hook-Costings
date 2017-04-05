@@ -140,11 +140,19 @@ sub _rightbar {
         $src_dest_url =~ s/_src\///;
         $src_dest_label = "Dest";
     }
+    my $meta_dest_url = $c->url_for("/_meta/$pagename/");
+    my $meta_dest_label = 'Meta';
+    if ($current_url =~ /_meta/) # we're already looking at Meta
+    {
+        $meta_dest_url =~ s/_meta\///;
+        $meta_dest_label = "Page";
+    }
     my $total = $self->_total_pages($c);
     my $atts = $self->_make_page_attachments_list($c);
     my $out=<<EOT;
 <p class="total">$total pages</p>
 <p class="srcdest"><a href="$src_dest_url">$src_dest_label</a></p>
+<p class="metadest"><a href="$meta_dest_url">$meta_dest_label</a></p>
 $atts
 EOT
         return $out;
