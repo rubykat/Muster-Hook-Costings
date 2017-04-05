@@ -18,7 +18,9 @@ I haven't figured out a good way of defining derivations in a config file.
 use Mojo::Base 'Muster::Hook';
 use Muster::Hooks;
 use Muster::LeafFile;
+use DBI;
 use YAML::Any;
+use Carp;
 
 =head1 METHODS
 
@@ -34,6 +36,26 @@ sub register {
 
     # we need to be able to look things up in the database
     $self->{metadb} = $hookmaster->{metadb};
+
+    # and in the other databases as well!
+    $self->{databases} = {};
+    while (my ($alias, $file) = each %{$conf->{hook_conf}->{'Muster::Hook::SqlReport'}})
+    {
+        if (!-r $file)
+        {
+            warn __PACKAGE__, " cannot read database '$file'";
+        }
+        else
+        {
+            my $dbh = DBI->connect("dbi:SQLite:dbname=$file", "", "");
+            if (!$dbh)
+            {
+                croak "Can't connect to $file $DBI::errstr";
+            }
+            $self->{databases}->{$alias} = $dbh;
+        }
+    }
+    $self->{config} = $conf->{hook_conf}->{'Muster::Hook::DeriveFields'};
 
     $hookmaster->add_hook('derivefields' => sub {
             my %args = @_;
@@ -144,10 +166,165 @@ sub process {
             $meta->{tags} = $len;
         }
     }
-
     $leaf->{meta} = $meta;
+
+    $leaf = $self->costings(%args);
     return $leaf;
 } # process
 
+sub costings {
+    my $self = shift;
+    my %args = @_;
+
+    my $leaf = $args{leaf};
+    my $phase = $args{phase};
+
+    my $meta = $leaf->meta;
+    if (exists $meta->{time} and defined $meta->{time})
+    {
+        my $hours;
+        if ($meta->{time} =~ /(\d+)h/i)
+        {
+            $hours = $1;
+        }
+        elsif ($meta->{time} =~ /(\d+)d/i)
+        {
+            # assume an eight-hour day
+            $hours = $1 * 8;
+        }
+        if ($hours)
+        {
+            my $per_hour = $self->{config}->{cost_per_hour} || 20;
+            $meta->{labour_cost} = $hours * $per_hour;
+        }
+    }
+    if (exists $meta->{materials} and defined $meta->{materials})
+    {
+        my $cost = 0;
+        my $mat = $meta->{materials};
+        if (!ref $meta->{materials} and $meta->{materials} =~ /^---/ms) # YAML
+        {
+            my $mat = Load($meta->{materials});
+        }
+        foreach my $key (sort keys %{$mat})
+        {
+            my $item = $mat->{$key};
+            my $item_cost = 0;
+            if ($item->{cost})
+            {
+                $item_cost = $item->{cost};
+            }
+            elsif ($item->{type})
+            {
+                if ($item->{type} eq 'yarn')
+                {
+                    my $cref = $self->_do_one_col_query('yarn',
+                        "SELECT BallCost FROM yarn WHERE SourceCode = '$item->{source}' AND Name = '$item->{name}';");
+                    if ($cref and $cref->[0])
+                    {
+                        $item_cost = $cref->[0];
+                    }
+                }
+            }
+
+            if ($item->{amount})
+            {
+                $item_cost = $item_cost * $item->{amount};
+            }
+            $cost += $item_cost;
+        } # for each item
+        $meta->{materials_cost} = $cost;
+
+        my $retail = $meta->{materials_cost} + $meta->{labour_cost};
+        my $overheads = $self->_calculate_overheads($retail);
+        $meta->{estimated_overheads1} = $overheads;
+        $retail = $retail + $overheads;
+        $overheads = $self->_calculate_overheads($retail);
+        $meta->{estimated_overheads} = $overheads;
+        $meta->{estimated_cost} = $retail;
+        if ($meta->{actual_price})
+        {
+            $meta->{actual_overheads} = $self->_calculate_overheads($meta->{actual_price});
+        }
+    }
+    if (exists $meta->{postage} and defined $meta->{postage})
+    {
+        # I'm going to have to double-check this
+        if ($meta->{postage} eq 'small') # large letter
+        {
+            $meta->{postage_au} = 6;
+        }
+        else # parcel
+        {
+            $meta->{postage_au} = 14;
+        }
+        $meta->{postage_us} = 24;
+        $meta->{postage_nz} = 20;
+        $meta->{postage_uk} = 29;
+    }
+
+    $leaf->{meta} = $meta;
+    return $leaf;
+} # costings
+
+=head2 _calculate_overheads
+
+Calculate overheads like listing fees and COMMISSION (which depends on the total, backwards)
+
+=cut
+sub _calculate_overheads {
+    my $self = shift;
+    my $retail = shift;
+
+    # Etsy fees are 20c per listing, plus 3.5% commission
+    # Etsy Direct Checkout fees are 25c per item, plus 4% of item cost
+    # Paypal ... is a bit confusing. 3.5% plus 30c per transaction?
+    my $overheads = 0.2 + ($retail * 0.035)
+    + 0.25 + ($retail * 0.04)
+    + 0.3 + ($retail * 0.035);
+
+    return $overheads;
+} # _calculate_overheads
+
+=head2 _do_one_col_query
+
+Do a SELECT query, and return the first column of results.
+This is a freeform query, so the caller must be careful to formulate it correctly.
+
+my $results = $self->_do_one_col_query($dbname,$query);
+
+=cut
+
+sub _do_one_col_query {
+    my $self = shift;
+    my $dbname = shift;
+    my $q = shift;
+
+    if ($q !~ /^SELECT /)
+    {
+        # bad boy! Not a SELECT.
+        return undef;
+    }
+    my $dbh = $self->{databases}->{$dbname};
+    return undef if !$dbh;
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @results = ();
+    my @row;
+    while (@row = $sth->fetchrow_array)
+    {
+        push @results, $row[0];
+    }
+    return \@results;
+} # _do_one_col_query
 
 1;

@@ -1256,7 +1256,6 @@ sub _add_page_data {
             elsif (ref $value)
             {
                 $value = Dump($value);
-                warn __PACKAGE__, " unexpected value for $field:", $value;
             }
 
             $q = "INSERT OR REPLACE INTO deepfields(page, field, value) VALUES(?, ?, ?);";
