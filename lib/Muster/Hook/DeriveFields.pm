@@ -180,24 +180,6 @@ sub costings {
     my $phase = $args{phase};
 
     my $meta = $leaf->meta;
-    if (exists $meta->{time} and defined $meta->{time})
-    {
-        my $hours;
-        if ($meta->{time} =~ /(\d+)h/i)
-        {
-            $hours = $1;
-        }
-        elsif ($meta->{time} =~ /(\d+)d/i)
-        {
-            # assume an eight-hour day
-            $hours = $1 * 8;
-        }
-        if ($hours)
-        {
-            my $per_hour = $self->{config}->{cost_per_hour} || 20;
-            $meta->{labour_cost} = $hours * $per_hour;
-        }
-    }
     if (exists $meta->{materials} and defined $meta->{materials})
     {
         my $cost = 0;
@@ -234,7 +216,29 @@ sub costings {
             $cost += $item_cost;
         } # for each item
         $meta->{materials_cost} = $cost;
-
+    }
+    # the labour_time will either be defined or derived
+    if (exists $meta->{labour_time} and defined $meta->{labour_time})
+    {
+        my $hours;
+        if ($meta->{labour_time} =~ /(\d+)h/i)
+        {
+            $hours = $1;
+        }
+        elsif ($meta->{labour_time} =~ /(\d+)d/i)
+        {
+            # assume an eight-hour day
+            $hours = $1 * 8;
+        }
+        if ($hours)
+        {
+            my $per_hour = $self->{config}->{cost_per_hour} || 20;
+            $meta->{labour_cost} = $hours * $per_hour;
+        }
+    }
+    # calculate total costs from previously derived costs
+    if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
+    {
         my $retail = $meta->{materials_cost} + $meta->{labour_cost};
         my $overheads = $self->_calculate_overheads($retail);
         $meta->{estimated_overheads1} = $overheads;
