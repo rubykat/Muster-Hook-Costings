@@ -183,6 +183,7 @@ sub costings {
     if (exists $meta->{materials} and defined $meta->{materials})
     {
         my $cost = 0;
+        my $labour = 0;
         my $mat = $meta->{materials};
         if (!ref $meta->{materials} and $meta->{materials} =~ /^---/ms) # YAML
         {
@@ -192,6 +193,7 @@ sub costings {
         {
             my $item = $mat->{$key};
             my $item_cost = 0;
+            my $item_time = 0;
             if ($item->{cost})
             {
                 $item_cost = $item->{cost};
@@ -207,15 +209,39 @@ sub costings {
                         $item_cost = $cref->[0];
                     }
                 }
+                elsif ($item->{type} eq 'maille')
+                {
+                    # the cost-per-ring in the chainmaille db is in cents, not dollars
+                    my $cref = $self->_do_one_col_query('chainmaille',
+                        "SELECT CostPerRing FROM rings WHERE Code = '$item->{code}';");
+                    if ($cref and $cref->[0])
+                    {
+                        $item_cost = ($cref->[0]/100.0);
+                    }
+                    $cref = $self->_do_one_col_query('chainmaille',
+                        "SELECT SecsPerRing FROM rings WHERE Code = '$item->{code}';");
+                    if ($cref and $cref->[0])
+                    {
+                        $item_time = $cref->[0];
+                    }
+                    else
+                    {
+                        # otherwise, 30 seconds per ring
+                        $item_time = 30;
+                    }
+                }
             }
 
             if ($item->{amount})
             {
                 $item_cost = $item_cost * $item->{amount};
+                $item_time = $item_time * $item->{amount};
             }
             $cost += $item_cost;
+            $labour += $item_time;
         } # for each item
         $meta->{materials_cost} = $cost;
+        $meta->{labour_time} = $labour . 's' if ($labour and !exists $meta->{labour_time});
     }
     # the labour_time will either be defined or derived
     if (exists $meta->{labour_time} and defined $meta->{labour_time})
@@ -230,9 +256,23 @@ sub costings {
             # assume an eight-hour day
             $hours = $1 * 8;
         }
+        elsif ($meta->{labour_time} =~ /(\d+)m/i)
+        {
+            # minutes
+            $hours = $1 / 60.0;
+        }
+        elsif ($meta->{labour_time} =~ /(\d+)s/i)
+        {
+            # seconds
+            $hours = $1 / (60.0 * 60.0);
+        }
         if ($hours)
         {
-            my $per_hour = $self->{config}->{cost_per_hour} || 20;
+            my $per_hour = (exists $meta->{cost_per_hour}
+                ? $meta->{cost_per_hour}
+                : (exists $self->{config}->{cost_per_hour}
+                    ? $self->{config}->{cost_per_hour}
+                    : 20));
             $meta->{labour_cost} = $hours * $per_hour;
         }
     }
