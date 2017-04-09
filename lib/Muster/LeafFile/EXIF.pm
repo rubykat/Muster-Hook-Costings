@@ -115,7 +115,7 @@ Source
 Title
 ))
     {
-        if (exists $info->{$field} and $info->{field})
+        if (exists $info->{$field} and $info->{$field})
         {
             $meta->{lc($field)} = $info->{$field};
         }
