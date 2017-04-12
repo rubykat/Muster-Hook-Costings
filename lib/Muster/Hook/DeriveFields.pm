@@ -180,6 +180,63 @@ sub costings {
     my $phase = $args{phase};
 
     my $meta = $leaf->meta;
+
+    # -----------------------------------------------------------
+    # LABOUR TIME
+    # If "construction" is given, use that to calculate the labour time
+    # There may be more than one means of contruction; for example,
+    # a resin pendant with a maille chain.
+    # An explicit "labour_time" overrides this
+    # -----------------------------------------------------------
+    if (exists $meta->{construction}
+            and defined $meta->{construction}
+            and not exists $meta->{labour_time}
+            and not defined $meta->{labour_time})
+    {
+        my $labour = 0;
+        my $constr = $meta->{construction};
+        if (!ref $meta->{construction} and $meta->{construction} =~ /^---/ms) # YAML
+        {
+            $constr = Load($meta->{construction});
+        }
+        foreach my $key (sort keys %{$constr})
+        {
+            my $item = $constr->{$key};
+            my $item_mins = 0;
+            if ($item->{uses} eq 'yarn')
+            {
+                # This is a yarn/stitch related method
+                # Look in the yarn database
+
+                my $cref = $self->_do_n_col_query('yarn',
+                    "SELECT Minutes,StitchesWide,StitchesLong FROM metrics WHERE Method = '$item->{method}';");
+                if ($cref and $cref->[0])
+                {
+                    my $row = $cref->[0];
+                    my $minutes = $row->{Minutes};
+                    my $wide = $row->{StitchesWide};
+                    my $long = $row->{StitchesLong};
+
+                    $item_mins = ((($item->{stitches_width} * $item->{stitches_length}) / ($wide * $long)) * $minutes);
+                    # round them
+                    $item_mins=sprintf ("%.0f",$item_mins+.5);
+                }
+            }
+            elsif ($item->{uses} eq 'chainmaille')
+            {
+                # default time-per-ring is 30 seconds
+                # but it can be overridden for something like, say, Titanium, or experimental weaves
+                my $secs_per_ring = ($item->{secs_per_ring} ? $item->{secs_per_ring} : 30);
+                $item_mins = ($secs_per_ring * $item->{rings}) / 60.0;
+            }
+            $labour += $item_mins;
+        }
+        $meta->{labour_time} = $labour if $labour;
+    }
+
+    # -----------------------------------------------------------
+    # MATERIAL COSTS
+    # -----------------------------------------------------------
     if (exists $meta->{materials} and defined $meta->{materials})
     {
         my $cost = 0;
@@ -193,7 +250,8 @@ sub costings {
         {
             my $item = $mat->{$key};
             my $item_cost = 0;
-            my $item_time = 0;
+            # for consistency all calculated item times will be in MINUTES
+            my $item_mins = 0;
             if ($item->{cost})
             {
                 $item_cost = $item->{cost};
@@ -218,32 +276,24 @@ sub costings {
                     {
                         $item_cost = ($cref->[0]/100.0);
                     }
-                    $cref = $self->_do_one_col_query('chainmaille',
-                        "SELECT SecsPerRing FROM rings WHERE Code = '$item->{code}';");
-                    if ($cref and $cref->[0])
-                    {
-                        $item_time = $cref->[0];
-                    }
-                    else
-                    {
-                        # otherwise, 30 seconds per ring
-                        $item_time = 30;
-                    }
                 }
             }
 
             if ($item->{amount})
             {
                 $item_cost = $item_cost * $item->{amount};
-                $item_time = $item_time * $item->{amount};
             }
             $cost += $item_cost;
-            $labour += $item_time;
+            $labour += $item_mins;
         } # for each item
         $meta->{materials_cost} = $cost;
-        $meta->{labour_time} = $labour . 's' if ($labour and !exists $meta->{labour_time});
+        $meta->{labour_time} = $labour if ($labour and !exists $meta->{labour_time});
     }
+    # -----------------------------------------------------------
+    # LABOUR COSTS
     # the labour_time will either be defined or derived
+    # if no suffix is given, assume minutes
+    # -----------------------------------------------------------
     if (exists $meta->{labour_time} and defined $meta->{labour_time})
     {
         my $hours;
@@ -256,15 +306,15 @@ sub costings {
             # assume an eight-hour day
             $hours = $1 * 8;
         }
-        elsif ($meta->{labour_time} =~ /(\d+)m/i)
-        {
-            # minutes
-            $hours = $1 / 60.0;
-        }
         elsif ($meta->{labour_time} =~ /(\d+)s/i)
         {
             # seconds
             $hours = $1 / (60.0 * 60.0);
+        }
+        elsif ($meta->{labour_time} =~ /(\d+)/i)
+        {
+            # minutes
+            $hours = $1 / 60.0;
         }
         if ($hours)
         {
@@ -276,13 +326,18 @@ sub costings {
             $meta->{labour_cost} = $hours * $per_hour;
         }
     }
-    # calculate total costs from previously derived costs
+    # -----------------------------------------------------------
+    # TOTAL COSTS AND OVERHEADS
+    # Calculate total costs from previously derived costs
+    # Add in the overheads, then re-calculate the total;
+    # this is because some overheads depend on a percentage of the total cost.
+    # -----------------------------------------------------------
     if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
     {
-        my $retail = $meta->{materials_cost} + $meta->{labour_cost};
-        my $overheads = $self->_calculate_overheads($retail);
+        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
+        my $overheads = $self->_calculate_overheads($wholesale);
         $meta->{estimated_overheads1} = $overheads;
-        $retail = $retail + $overheads;
+        my $retail = $wholesale + $overheads;
         $overheads = $self->_calculate_overheads($retail);
         $meta->{estimated_overheads} = $overheads;
         $meta->{estimated_cost} = $retail;
@@ -370,5 +425,46 @@ sub _do_one_col_query {
     }
     return \@results;
 } # _do_one_col_query
+
+=head2 _do_n_col_query
+
+Do a SELECT query, and return all the results.
+This is a freeform query, so the caller must be careful to formulate it correctly.
+
+my $results = $self->_do_n_col_query($dbname,$query);
+
+=cut
+
+sub _do_n_col_query {
+    my $self = shift;
+    my $dbname = shift;
+    my $q = shift;
+
+    if ($q !~ /^SELECT /)
+    {
+        # bad boy! Not a SELECT.
+        return undef;
+    }
+    my $dbh = $self->{databases}->{$dbname};
+    return undef if !$dbh;
+
+    my $sth = $dbh->prepare($q);
+    if (!$sth)
+    {
+        croak "FAILED to prepare '$q' $DBI::errstr";
+    }
+    my $ret = $sth->execute();
+    if (!$ret)
+    {
+        croak "FAILED to execute '$q' $DBI::errstr";
+    }
+    my @results = ();
+    my $row;
+    while ($row = $sth->fetchrow_hashref)
+    {
+        push @results, $row;
+    }
+    return \@results;
+} # _do_n_col_query
 
 1;
