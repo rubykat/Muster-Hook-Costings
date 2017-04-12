@@ -300,7 +300,7 @@ sub derive_title {
 
     # get the title from the name of the file
     my $name = $self->name;
-    $name =~ s/_/ /g;
+    $name =~ s/[_-]/ /g;
     my $tc = Lingua::EN::Titlecase->new($name);
     return $tc->title();
 }
