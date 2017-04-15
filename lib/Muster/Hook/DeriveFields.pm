@@ -19,6 +19,7 @@ use Mojo::Base 'Muster::Hook';
 use Muster::Hooks;
 use Muster::LeafFile;
 use DBI;
+use Lingua::EN::Inflexion;
 use YAML::Any;
 use Carp;
 
@@ -115,6 +116,25 @@ sub process {
 
     # the first Alpha of the name; good for headers in reports
     $meta->{name_a} = uc(substr($leaf->name, 0, 1));
+
+    # plural and singular 
+    # assuming that the page-name is a noun...
+    my $noun = noun($leaf->name);
+    if ($noun->is_plural())
+    {
+        $meta->{singular} = $noun->singular();
+        $meta->{plural} = $leaf->name;
+    }
+    elsif ($noun->is_singular())
+    {
+        $meta->{singular} = $leaf->name;
+        $meta->{plural} = $noun->plural();
+    }
+    else # neither
+    {
+        $meta->{singular} = $leaf->name;
+        $meta->{plural} = $leaf->name;
+    }
 
     # Classify the prose length for those pages that have wordcounts. Of course,
     # this assumes that all of the words are in one page, which for long
