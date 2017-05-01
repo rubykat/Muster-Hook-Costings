@@ -252,6 +252,7 @@ sub process {
                 : (exists $self->{config}->{cost_per_hour}
                     ? $self->{config}->{cost_per_hour}
                     : 20));
+            $meta->{used_cost_per_hour} = $per_hour;
             $meta->{labour_cost} = $hours * $per_hour;
         }
     }
