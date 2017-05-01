@@ -16,7 +16,7 @@ use Muster::Hooks;
 use Muster::Hook::Links;
 use File::Basename qw(basename);
 use YAML::Any;
-use Module::Runtime qw(require_module);
+use Text::NeatTemplate;
 
 use Carp 'croak';
 
@@ -34,12 +34,6 @@ sub register {
     my $hookmaster = shift;
     my $conf = shift;
 
-    my $res = eval { require_module('Text::NeatTemplate') };
-    if ($@) # template module not found
-    {
-        # return without adding a hook
-        return $self;
-    }
     $self->{neat} = Text::NeatTemplate->new();
 
     $hookmaster->add_hook('template' => sub {
@@ -95,5 +89,109 @@ sub process {
 
     return $result;
 } # process
+
+# -------------------------------------------------------------
+# Callable Functions for Text::NeatTemplate
+# -------------------------------------------------------------
+
+=head2 format_yaml
+
+{&format_yaml(fieldname,yaml_value)
+
+Format a yaml field.
+
+=cut
+sub format_yaml {
+    my $fieldname = shift;
+    my $value = shift;
+
+    # if they didn't give us anything, return
+    if (!$value)
+    {
+	return '';
+    }
+
+    my $loaded = Load($value);
+    if (!$loaded)
+    {
+        return $value;
+    }
+    if (!ref $loaded)
+    {
+        return $loaded;
+    }
+
+    my $out = '';
+    if ($fieldname)
+    {
+        $out .= "<b>" . uc($fieldname) . ":</b>\n";
+    }
+    if (ref $loaded eq 'HASH')
+    {
+        $out .= _format_hash($loaded,0);
+    }
+    elsif (ref $loaded eq 'ARRAY')
+    {
+        $out .= _format_array($loaded,0);
+    }
+    $out .= "<br/>\n";
+    return $out;
+} # format_yaml
+
+sub _format_hash {
+    my $hash = shift;
+    my $level = shift;
+
+    my $out = '';
+    foreach my $key (sort keys %{$hash})
+    {
+        if ($level == 0)
+        {
+            $out .= "<br/><b>$key:</b> ";
+        }
+        else
+        {
+            $out .= '<br/>' . '&nbsp;&nbsp;' x $level . $key . ': ';
+        }
+
+        my $v = $hash->{$key};
+        if (!ref $v)
+        {
+            $out .= $v;
+        }
+        elsif (ref $v eq 'HASH')
+        {
+            $out .= _format_hash($v,$level + 1);
+        }
+        elsif (ref $v eq 'ARRAY')
+        {
+            $out .= _format_array($v,$level + 1);
+        }
+    }
+    return $out;
+} # _format_hash
+
+sub _format_array {
+    my $array = shift;
+    my $level = shift;
+
+    my $out = '';
+    foreach my $item (@{$array})
+    {
+        if (!ref $item)
+        {
+            $out .= $item . "<br/>\n";
+        }
+        elsif (ref $item eq 'HASH')
+        {
+            $out .= _format_hash($item,$level + 1);
+        }
+        elsif (ref $item eq 'ARRAY')
+        {
+            $out .= _format_array($item,$level + 1);
+        }
+    }
+    return $out;
+} # _format_array
 
 1;
