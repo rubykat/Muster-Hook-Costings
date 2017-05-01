@@ -54,6 +54,7 @@ sub process {
     my $leaf = $args{leaf};
     my $phase = $args{phase};
 
+    # if this isn't a page, we can't include anything in it!
     if (!$leaf->is_page)
     {
         return $leaf;
