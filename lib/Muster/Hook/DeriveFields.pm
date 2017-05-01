@@ -206,7 +206,7 @@ sub costings {
     # If "construction" is given, use that to calculate the labour time
     # There may be more than one means of contruction; for example,
     # a resin pendant with a maille chain.
-    # An explicit "labour_time" overrides this
+    # An explicit top-level "labour_time" overrides this
     # -----------------------------------------------------------
     if (exists $meta->{construction}
             and defined $meta->{construction}
@@ -248,6 +248,25 @@ sub costings {
                 # but it can be overridden for something like, say, Titanium, or experimental weaves
                 my $secs_per_ring = ($item->{secs_per_ring} ? $item->{secs_per_ring} : 30);
                 $item_mins = ($secs_per_ring * $item->{rings}) / 60.0;
+            }
+            elsif ($item->{uses} =~ /resin/i)
+            {
+                # Resin time depends on the number of layers
+                # but the number of minutes per layer may be overridden; by default 30 mins
+                # This of course does not include curing time.
+                my $mins_per_layer = ($item->{mins_per_layer} ? $item->{mins_per_layer} : 30);
+                $item_mins = $mins_per_layer * $item->{layers};
+            }
+            elsif ($item->{uses} =~ /findings/i)
+            {
+                # Putting on the findings or end-caps or clasps etc usually takes about 10 minutes.
+                # But allow this to be overridden if need be.
+                $item_mins = ($item->{minutes} ? $item->{minutes} : 10);
+            }
+            elsif ($item->{minutes})
+            {
+                # generic task override, just say how many minutes it took
+                $item_mins = $item->{minutes};
             }
             $labour += $item_mins;
         }
