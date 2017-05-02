@@ -274,6 +274,7 @@ sub process {
         if ($meta->{actual_price})
         {
             $meta->{actual_overheads} = $self->_calculate_overheads($meta->{actual_price});
+            $meta->{actual_return} = $meta->{actual_price} - $meta->{actual_overheads};
         }
     }
     if (exists $meta->{postage} and defined $meta->{postage})
@@ -304,15 +305,17 @@ And then there's GST, which may or may not be included.
 =cut
 sub _calculate_overheads {
     my $self = shift;
-    my $retail = shift;
+    my $bare_cost = shift;
 
     # Etsy listing fees are 20c US per listing per four months
     # Etsy transaction fees are: 3.5% commission
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
-    my $overheads = (0.2 / 0.7) + ($retail * 0.035)
-    + 0.25 + ($retail * 0.04);
+    my $overheads = (0.2 / 0.7) + ($bare_cost * 0.035)
+    + 0.25 + ($bare_cost * 0.04);
+
     # And then there's GST, 10% on top, which may or may not be included... (?)
-    $overheads = ($retail + $overheads) * 0.1);
+    $bare_cost += $overheads;
+    $overheads += ($bare_cost * 0.1);
     
     # I'm not including Paypal here -- that's for if I'm not selling through Etsy.
     # (Paypal fees: 3.5% plus 30c per transaction?)
