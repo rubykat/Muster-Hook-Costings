@@ -299,6 +299,7 @@ sub process {
 =head2 _calculate_overheads
 
 Calculate overheads like listing fees and COMMISSION (which depends on the total, backwards)
+And then there's GST, which may or may not be included.
 
 =cut
 sub _calculate_overheads {
@@ -306,11 +307,13 @@ sub _calculate_overheads {
     my $retail = shift;
 
     # Etsy fees are 20c US per listing, plus 3.5% commission
-    # Etsy Direct Checkout fees are 25c per item, plus 4% of item cost
+    # Etsy Direct Checkout fees are 25c US per item, plus 4% of item cost
     # Paypal ... is a bit confusing. 3.5% plus 30c per transaction?
-    my $overheads = 0.26 + ($retail * 0.035)
-    + 0.30 + ($retail * 0.04)
-    + 0.35 + ($retail * 0.035);
+    # And then there's GST, which may or may not be included... (?)
+    my $overheads = (0.2 / 0.7) + ($retail * 0.035)
+    + (0.25 / 0.7) + ($retail * 0.04)
+    + (0.3 / 0.7)  + ($retail * 0.035)
+    + ($retail * 0.1);
 
     return $overheads;
 } # _calculate_overheads
