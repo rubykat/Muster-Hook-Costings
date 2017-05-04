@@ -147,16 +147,15 @@ sub process {
                 my $mins_per_layer = ($item->{mins_per_layer} ? $item->{mins_per_layer} : 30);
                 $item_mins = $mins_per_layer * $item->{layers};
             }
-            elsif ($item->{uses} =~ /findings/i)
-            {
-                # Putting on the findings or end-caps or clasps etc usually takes about 10 minutes.
-                # But allow this to be overridden if need be.
-                $item_mins = ($item->{minutes} ? $item->{minutes} : 10);
-            }
             elsif ($item->{minutes})
             {
                 # generic task override, just say how many minutes it took
                 $item_mins = $item->{minutes};
+
+                # This may be multiplied by an "amount", because this could be
+                # talking about repeated actions. For example, wire-wrapping the
+                # ends of six cords, the amount would be six.
+                $item_mins = $item_mins * $item->{amount} if $item->{amount};
             }
             $labour += $item_mins;
         }
