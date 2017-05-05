@@ -299,7 +299,6 @@ sub process {
 =head2 _calculate_overheads
 
 Calculate overheads like listing fees and COMMISSION (which depends on the total, backwards)
-And then there's GST, which may or may not be included.
 
 =cut
 sub _calculate_overheads {
@@ -312,12 +311,13 @@ sub _calculate_overheads {
     my $overheads = (0.2 / 0.7) + ($bare_cost * 0.035)
     + 0.25 + ($bare_cost * 0.04);
 
-    # And then there's GST, 10% on top, which may or may not be included... (?)
+    # Add another 5% for random other overheads, such as handling.
     $bare_cost += $overheads;
-    $overheads += ($bare_cost * 0.1);
+    $overheads += ($bare_cost * 0.05);
     
     # I'm not including Paypal here -- that's for if I'm not selling through Etsy.
     # (Paypal fees: 3.5% plus 30c per transaction?)
+    # GST is not included because I don't have to pay GST because I'm not making $75,000
 
     return $overheads;
 } # _calculate_overheads
