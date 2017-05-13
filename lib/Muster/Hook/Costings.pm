@@ -289,7 +289,7 @@ sub process {
     {
         # Note that all my jewellery is too thick to be able to be sent as a Large Letter.
         # Postage within AU for a small-500g parcel is $7.60.
-        # Putting in the prices here for Economy-Air for overseas parcels.
+        # Putting in the prices here for Economy-Air for overseas parcels. But round up to the nearest ten.
         # Price as of 13-05-2017
         # Plus the cost of the packaging.
         # The very smallest padded bags range from 30c to $2 each - ha!
@@ -299,37 +299,37 @@ sub process {
         if ($meta->{postage} eq 'light') # less than 500g
         {
             $meta->{postage_au} = 7.60 + 1;
-            $meta->{postage_nz} = 11.86 + 1;
-            $meta->{postage_us} = 15.85 + 1;
-            $meta->{postage_uk} = 20.46 + 1;
+            $meta->{postage_nz} = 11.90 + 1; # 11.86
+            $meta->{postage_us} = 15.90 + 1; # 15.85
+            $meta->{postage_uk} = 20.50 + 1; # 20.46
         }
         elsif ($meta->{postage} eq 'light-large') # less than 500g, but big size, needs a larger envelope
         {
             $meta->{postage_au} = 7.60 + 2;
-            $meta->{postage_nz} = 11.86 + 2;
-            $meta->{postage_us} = 15.85 + 2;
-            $meta->{postage_uk} = 20.46 + 2;
+            $meta->{postage_nz} = 11.90 + 2;
+            $meta->{postage_us} = 15.90 + 2;
+            $meta->{postage_uk} = 20.50 + 2;
         }
         elsif ($meta->{postage} eq 'middling') # up to 1kg
         {
             $meta->{postage_au} = 16.40 + 2;
-            $meta->{postage_nz} = 23.77 + 2;
-            $meta->{postage_us} = 33.38 + 2;
-            $meta->{postage_uk} = 35.19 + 2;
+            $meta->{postage_nz} = 23.80 + 2;
+            $meta->{postage_us} = 33.40 + 2;
+            $meta->{postage_uk} = 35.20 + 2;
         }
         elsif ($meta->{postage} eq 'heavy') # up to 1.5 kg
         {
             $meta->{postage_au} = 19.50 + 2;
-            $meta->{postage_nz} = 29.08 + 2;
+            $meta->{postage_nz} = 29.10 + 2;
             $meta->{postage_us} = 45.40 + 2;
-            $meta->{postage_uk} = 47.54 + 2;
+            $meta->{postage_uk} = 47.60 + 2;
         }
         elsif ($meta->{postage} eq 'v-heavy') # up to 2kg
         {
             $meta->{postage_au} = 19.50 + 2;
-            $meta->{postage_nz} = 34.04 + 2;
-            $meta->{postage_us} = 57.63 + 2;
-            $meta->{postage_uk} = 60.05 + 2;
+            $meta->{postage_nz} = 34.10 + 2;
+            $meta->{postage_us} = 57.70 + 2;
+            $meta->{postage_uk} = 60.10 + 2;
         }
     }
 
