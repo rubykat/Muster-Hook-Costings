@@ -205,6 +205,15 @@ sub process {
                         $item_cost = ($cref->[0]/100.0);
                     }
                 }
+                elsif ($item->{type} eq 'supplies')
+                {
+                    my $cref = $self->_do_one_col_query('supplies',
+                        "SELECT cost FROM supplies WHERE Name = '$item->{name}';");
+                    if ($cref and $cref->[0])
+                    {
+                        $item_cost = $cref->[0];
+                    }
+                }
             }
 
             if ($item->{amount})
@@ -278,18 +287,50 @@ sub process {
     }
     if (exists $meta->{postage} and defined $meta->{postage})
     {
-        # I'm going to have to double-check this
-        if ($meta->{postage} eq 'small') # large letter
+        # Note that all my jewellery is too thick to be able to be sent as a Large Letter.
+        # Postage within AU for a small-500g parcel is $7.60.
+        # Putting in the prices here for Economy-Air for overseas parcels.
+        # Price as of 13-05-2017
+        # Plus the cost of the packaging.
+        # The very smallest padded bags range from 30c to $2 each - ha!
+        # I'm not sure what size of bag I would need for the larger/heavier items
+        # (apart from Rayvyn's scarf, which barely fits into a size-4 bag)
+        # (but it is interesting, that despite its bulk, it still weighs less than 500g)
+        if ($meta->{postage} eq 'light') # less than 500g
         {
-            $meta->{postage_au} = 6;
+            $meta->{postage_au} = 7.60 + 1;
+            $meta->{postage_nz} = 11.86 + 1;
+            $meta->{postage_us} = 15.85 + 1;
+            $meta->{postage_uk} = 20.46 + 1;
         }
-        else # parcel
+        elsif ($meta->{postage} eq 'light-large') # less than 500g, but big size, needs a larger envelope
         {
-            $meta->{postage_au} = 14;
+            $meta->{postage_au} = 7.60 + 2;
+            $meta->{postage_nz} = 11.86 + 2;
+            $meta->{postage_us} = 15.85 + 2;
+            $meta->{postage_uk} = 20.46 + 2;
         }
-        $meta->{postage_us} = 24;
-        $meta->{postage_nz} = 20;
-        $meta->{postage_uk} = 29;
+        elsif ($meta->{postage} eq 'middling') # up to 1kg
+        {
+            $meta->{postage_au} = 16.40 + 2;
+            $meta->{postage_nz} = 23.77 + 2;
+            $meta->{postage_us} = 33.38 + 2;
+            $meta->{postage_uk} = 35.19 + 2;
+        }
+        elsif ($meta->{postage} eq 'heavy') # up to 1.5 kg
+        {
+            $meta->{postage_au} = 19.50 + 2;
+            $meta->{postage_nz} = 29.08 + 2;
+            $meta->{postage_us} = 45.40 + 2;
+            $meta->{postage_uk} = 47.54 + 2;
+        }
+        elsif ($meta->{postage} eq 'v-heavy') # up to 2kg
+        {
+            $meta->{postage_au} = 19.50 + 2;
+            $meta->{postage_nz} = 34.04 + 2;
+            $meta->{postage_us} = 57.63 + 2;
+            $meta->{postage_uk} = 60.05 + 2;
+        }
     }
 
     $leaf->{meta} = $meta;
