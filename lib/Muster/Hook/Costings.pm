@@ -157,6 +157,7 @@ sub process {
                 # ends of six cords, the amount would be six.
                 $item_mins = $item_mins * $item->{amount} if $item->{amount};
             }
+            $meta->{construction}->{$key}->{minutes} = $item_mins;
             $labour += $item_mins;
         }
         $meta->{labour_time} = $labour if $labour;
@@ -168,7 +169,6 @@ sub process {
     if (exists $meta->{materials} and defined $meta->{materials})
     {
         my $cost = 0;
-        my $labour = 0;
         my $mat = $meta->{materials};
         if (!ref $meta->{materials} and $meta->{materials} =~ /^---/ms) # YAML
         {
@@ -178,8 +178,6 @@ sub process {
         {
             my $item = $mat->{$key};
             my $item_cost = 0;
-            # for consistency all calculated item times will be in MINUTES
-            my $item_mins = 0;
             if ($item->{cost})
             {
                 $item_cost = $item->{cost};
@@ -220,11 +218,10 @@ sub process {
             {
                 $item_cost = $item_cost * $item->{amount};
             }
+            $meta->{materials}->{$key}->{cost} = $item_cost;
             $cost += $item_cost;
-            $labour += $item_mins;
         } # for each item
         $meta->{materials_cost} = $cost;
-        $meta->{labour_time} = $labour if ($labour and !exists $meta->{labour_time});
     }
     # -----------------------------------------------------------
     # LABOUR COSTS
