@@ -182,7 +182,10 @@ sub process {
             if ($item->{cost})
             {
                 $item_cost = $item->{cost};
-                $materials_hash{$key}++;
+                if ($key !~ /findings/i)
+                {
+                    $materials_hash{$key}++;
+                }
             }
             elsif ($item->{type})
             {
@@ -218,12 +221,23 @@ sub process {
                 elsif ($item->{type} eq 'supplies')
                 {
                     my $cref = $self->_do_n_col_query('supplies',
-                        "SELECT cost FROM supplies WHERE Name = '$item->{name}';");
+                        "SELECT cost,materials,title,type FROM supplies WHERE Name = '$item->{name}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
                         $item_cost = $row->{cost};
-                        $materials_hash{$key}++;
+                        if ($key =~ /resin/i)
+                        {
+                            $materials_hash{'Resin'}++;
+                        }
+                        elsif ($row->{type} =~ /findings/i)
+                        {
+                            # ignore findings in the materials list
+                        }
+                        else
+                        {
+                            $materials_hash{$key}++;
+                        }
                     }
                 }
             }
