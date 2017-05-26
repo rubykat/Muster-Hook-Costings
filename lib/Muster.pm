@@ -224,3 +224,19 @@ __DATA__
 % end
 <h1>Page List:</h1>
 <%== muster_pagelist %>
+
+@@ layouts/bare.html.ep
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    %= content 'head_extra'
+</head>
+<body>
+<main>
+<%== content %>
+</main>
+</body>
+</html>
+
