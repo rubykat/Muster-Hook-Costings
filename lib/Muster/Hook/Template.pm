@@ -194,4 +194,30 @@ sub _format_array {
     return $out;
 } # _format_array
 
+=head2 repeat_n
+
+{&repeat_n(num,value)
+
+Repeat a format N times.
+Simple substitution: $$N is the number
+    and $$A is the equivalent letter.
+
+=cut
+sub repeat_n {
+    my $num = shift;
+    my $value = shift;
+
+    my @out = ();
+    my $a = 'A';
+    for (my $i = 1; $i <= $num; $i++)
+    {
+        my $line = $value;
+        $line =~ s/\$\$N/$i/g;
+        $line =~ s/\$\$A/$a/g;
+        push @out, $line;
+        $a++;
+    }
+    return join("\n", @out);
+} # repeat_n
+
 1;
