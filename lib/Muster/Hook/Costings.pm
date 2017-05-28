@@ -116,8 +116,17 @@ sub process {
             if (defined $item->{uses} and $item->{uses} eq 'yarn')
             {
                 # This is a yarn/stitch related method
-                # Look in the yarn database
 
+                # Do extra calculations for Lucet cord if need be
+                if ($item->{method} eq 'Lucet Cord'
+                        and !$item->{stitches_length}
+                        and defined $item->{length}
+                        and defined $item->{stitches_per})
+                {
+                    $item->{stitches_length} = ($item->{stitches_per}->{stitches} / $item->{stitches_per}->{length}) * $item->{length};
+                }
+
+                # Look in the yarn database
                 my $cref = $self->_do_n_col_query('yarn',
                     "SELECT Minutes,StitchesWide,StitchesLong FROM metrics WHERE Method = '$item->{method}';");
                 if ($cref and $cref->[0])
