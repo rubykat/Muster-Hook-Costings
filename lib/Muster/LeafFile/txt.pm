@@ -28,6 +28,12 @@ sub build_html {
     my $self = shift;
 
     my $content = $self->cooked();
+    # if the output is going to be text, don't process it
+    if (defined $self->meta->{page_format}
+            and $self->meta->{page_format} eq 'txt')
+    {
+        return $content;
+    }
     return <<EOT;
 <pre>
 $content

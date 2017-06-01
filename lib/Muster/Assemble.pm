@@ -99,7 +99,8 @@ sub serve_page {
     $c->stash('title' => $leaf->title);
     $c->stash('pagename' => $pagename);
     $c->stash('content' => $html);
-    $c->render(template => 'page');
+    $c->render(template => 'page',
+        format => ($info->{page_format} ? $info->{page_format} : 'html'));
 } # serve_page
 
 =head2 serve_meta

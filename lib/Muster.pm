@@ -209,6 +209,10 @@ __DATA__
 % end
 <%== $content %>
 
+@@page.txt.ep
+% layout 'bare';
+<%== $content %>
+
 @@pagelist.html.ep
 % layout 'foil';
 % content_for 'head_extra' => begin
@@ -225,7 +229,10 @@ __DATA__
 <h1>Page List:</h1>
 <%== muster_pagelist %>
 
-@@ layouts/bare.html.ep
+@@ layouts/bare.txt.ep
+<%== content %>
+
+@@ layouts/plain.html.ep
 <!DOCTYPE html>
 <html>
 <head>
