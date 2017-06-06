@@ -221,4 +221,37 @@ sub repeat_n {
     return join("", @out);
 } # repeat_n
 
+=head2 repeat_for
+
+{&repeat_for(pipe_value,value)
+
+Repeat a format for each "pipe-value" (pipe-separated value).
+Simple substitution:
+    $$F is the "for" value
+    $$N is the number
+    and $$A is the equivalent letter.
+
+=cut
+sub repeat_for {
+    my $pipeval = shift;
+    my @values = @_;
+
+    my @tags = split(/[|]/, $pipeval);
+    my $value = join(',', @values);
+    my @out = ();
+    my $a = 'A';
+    my $i = 1;
+    foreach my $tag (@tags)
+    {
+        my $line = $value;
+        $line =~ s/\$\$F/$tag/g;
+        $line =~ s/\$\$N/$i/g;
+        $line =~ s/\$\$A/$a/g;
+        push @out, $line;
+        $a++;
+        $i++;
+    }
+    return join("", @out);
+} # repeat_for
+
 1;
