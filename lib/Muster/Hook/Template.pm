@@ -205,8 +205,9 @@ Simple substitution: $$N is the number
 =cut
 sub repeat_n {
     my $num = shift;
-    my $value = shift;
+    my @values = @_;
 
+    my $value = join(',', @values);
     my @out = ();
     my $a = 'A';
     for (my $i = 1; $i <= $num; $i++)
@@ -217,7 +218,7 @@ sub repeat_n {
         push @out, $line;
         $a++;
     }
-    return join("\n", @out);
+    return join("", @out);
 } # repeat_n
 
 1;
