@@ -398,6 +398,9 @@ sub _calculate_overheads {
     my $overheads = (0.2 / 0.7) + ($bare_cost * 0.035)
     + 0.25 + ($bare_cost * 0.04);
 
+    # And now Etsy are charging GST on their fees
+    $overheads += $overheads * 0.1;
+
     # Add another 5% for random other overheads, such as handling.
     $bare_cost += $overheads;
     $overheads += ($bare_cost * 0.05);
