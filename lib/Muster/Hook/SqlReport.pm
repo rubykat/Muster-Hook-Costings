@@ -133,16 +133,18 @@ sub process {
     {
         my $this_url = $c->req->url->to_string;
         $form =<<EOT;
+<div>
 <form action="$this_url">
 <strong>WHERE:</strong> $w
 <strong>AND</strong><br/>
 <textarea name="$q_id" rows="4" cols="60">$q</textarea>
 <input type="submit" value="Search">
 </form>
+</div>
 EOT
     }
 
-    my $result = $self->{databases}->{$params{database}}->do_report(%params,page=>$n,limit=>$limit);
+    my $result = $self->{databases}->{$params{database}}->do_report(%params,page=>$n,limit=>$limit,q=>$q);
 
     if ($params{ltemplate}
         and $result)
@@ -423,6 +425,7 @@ sub make_pagination {
     my $page = $args{page};
     my $limit = $args{limit};
     my $total = $args{total};
+    my $q = $args{q};
 
     if (!$limit)
     {
@@ -445,7 +448,8 @@ EOT
     my $printing_buttons = 0;
     for (my $i=1; $i <= $num_pages; $i++)
     {
-        my $link = sprintf('<span class="button"><a href="?%s=%d"> %d </a></span>', $n_id, $i, $i);
+        my $link = sprintf('<span class="button"><a href="?%s=%d%s"> %d </a></span>',
+            $n_id, $i, ($q ? "&q=$q" : ''), $i);
         $link = "<strong style='font-size: 1.5em;'> $i </strong>" if ($i == $page);
         if ($num_pages <= 20
                 or ($i <= $leeway + 1)
