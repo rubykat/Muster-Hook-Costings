@@ -442,26 +442,29 @@ sub make_pagination {
     my $out=<<EOT;
 <div class="pagination">
 EOT
+    my $printing_buttons = 0;
     for (my $i=1; $i <= $num_pages; $i++)
     {
-        my $link = sprintf('<a href="?n_%s=%d"> %d </a>', $n_id, $i, $i);
-        $link = "<strong> $i </strong>" if ($i == $page);
+        my $link = sprintf('<span class="button"><a href="?%s=%d"> %d </a></span>', $n_id, $i, $i);
+        $link = "<strong style='font-size: 1.5em;'> $i </strong>" if ($i == $page);
         if ($num_pages <= 20
                 or ($i <= $leeway + 1)
                 or ($i >= ($num_pages - $leeway))
                 or ($i >= ($middle_pages - $leeway) and $i <= ($middle_pages + $leeway))
+                or ($i >= ($page - $leeway) and $i <= ($page + $leeway))
         )
         {
-            $out .= "<span class='button'>$link</span>\n";
+            $out .= "$link\n";
+            $printing_buttons = 1;
         }
-        elsif ($num_pages > 20
-                and (($i == $leeway + 2)
-                    or ($i == ($num_pages - ($leeway + 1)))
-            )
-        )
+        elsif ($num_pages > 20)
         {
-            # put a gap in
-            $out .= "...\n";
+            if ($printing_buttons)
+            {
+                # put a gap in
+                $out .= "...\n";
+                $printing_buttons = 0;
+            }
         }
     }
     $out.=<<EOT;
