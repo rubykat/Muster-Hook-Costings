@@ -85,7 +85,6 @@ sub process {
     my @p = @{$args{params}};
     my %params = @p;
 
-
     my $page = $leaf->pagename;
     foreach my $p (qw(database table where))
     {
@@ -100,28 +99,59 @@ sub process {
 		$params{database}));
     }
 
-    # if the report has an ID, enable pagination
+    # If there is more than one report on a page,
+    # the report will need an ID for pagination and/or query
+    # If there is only one report on the page, then it doesn't.
+ 
+    # Check for pagination and query
     my $c = $args{controller}; # build-phase has a controller
     my $n = 1;
-    my $limit = 0;
-    if (exists $params{report_id})
+    my $limit = $params{limit};
+    my $n_id = (exists $params{report_id}
+        ? "n_".$params{report_id} : "n");
+
+    # pagination happens when the limit is not zero
+    if ($limit)
     {
-        $n = $c->param("n_".$params{report_id}) || 1;
-        $limit = $params{limit} || 20;
+        $n = $c->param($n_id) || 1;
     }
 
-    my $out = '';
+    # Check the q parameter and AND it with the "where"
+    my $q_id = (exists $params{report_id}
+        ? "q_".$params{report_id} : "q");
+    my $q = $c->param($q_id);
+    my $w = $params{where};
+    if ($q)
+    {
+        $params{where} = "($w) AND ($q)";
+    }
 
-    $out = $self->{databases}->{$params{database}}->do_report(%params,page=>$n,limit=>$limit);
+    # if there is query_form enabled:
+    # - print a query form
+    my $form = '';
+    if (exists $params{query_form} and $params{query_form})
+    {
+        my $this_url = $c->req->url->to_string;
+        $form =<<EOT;
+<form action="$this_url">
+<strong>WHERE:</strong> $w
+<strong>AND</strong><br/>
+<textarea name="$q_id" rows="4" cols="60">$q</textarea>
+<input type="submit" value="Search">
+</form>
+EOT
+    }
+
+    my $result = $self->{databases}->{$params{database}}->do_report(%params,page=>$n,limit=>$limit);
 
     if ($params{ltemplate}
-        and $out)
+        and $result)
     {
         my $out2 = $params{ltemplate};
-        $out2 =~ s/CONTENTS/$out/g;
-        $out = $out2;
+        $out2 =~ s/CONTENTS/$result/g;
+        $result = $out2;
     }
-    return $out;
+    return $form . $result;
 } # preprocess
 
 sub DESTROY {
@@ -384,6 +414,7 @@ EOT
 =head2 make_pagination
 
 Make the buttons for the pagination.
+Pagination happens only when there's a limit not equal to zero.
 
 =cut
 sub make_pagination {
@@ -392,14 +423,15 @@ sub make_pagination {
     my $page = $args{page};
     my $limit = $args{limit};
     my $total = $args{total};
-    my $report_id = $args{report_id};
 
-    my $num_pages = ($limit ? ceil($total / $limit) : 0);
-
-    if (!$report_id or !$limit)
+    if (!$limit)
     {
         return "";
     }
+
+    my $num_pages = ceil($total / $limit);
+    my $n_id = (exists $args{report_id}
+        ? "n_".$args{report_id} : "n");
 
     # if we leave the "this page" part of the url blank, it defaults to the current page,
     # which is just what we want
@@ -409,7 +441,7 @@ sub make_pagination {
 EOT
     for (my $i=1; $i <= $num_pages; $i++)
     {
-        my $link = sprintf('<a href="?n_%s=%d"> %d </a>', $report_id, $i, $i);
+        my $link = sprintf('<a href="?n_%s=%d"> %d </a>', $n_id, $i, $i);
         $link = "<strong> $i </strong>" if ($i == $page);
         $out .= "<td>$link</td>\n";
     }
