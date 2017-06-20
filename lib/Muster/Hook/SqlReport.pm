@@ -433,20 +433,39 @@ sub make_pagination {
     my $n_id = (exists $args{report_id}
         ? "n_".$args{report_id} : "n");
 
-    # if we leave the "this page" part of the url blank, it defaults to the current page,
+    # If we leave the "this page" part of the url blank, it defaults to the current page,
     # which is just what we want
+    # If we have a large number of pages, we don't want to show links to them all
+    my $middle_pages = ceil($num_pages / 2);
+    my $leeway = 3;
 
     my $out=<<EOT;
-<table class="pagination"><tr>
+<div class="pagination">
 EOT
     for (my $i=1; $i <= $num_pages; $i++)
     {
         my $link = sprintf('<a href="?n_%s=%d"> %d </a>', $n_id, $i, $i);
         $link = "<strong> $i </strong>" if ($i == $page);
-        $out .= "<td>$link</td>\n";
+        if ($num_pages <= 20
+                or ($i <= $leeway + 1)
+                or ($i >= ($num_pages - $leeway))
+                or ($i >= ($middle_pages - $leeway) and $i <= ($middle_pages + $leeway))
+        )
+        {
+            $out .= "<span class='button'>$link</span>\n";
+        }
+        elsif ($num_pages > 20
+                and (($i == $leeway + 2)
+                    or ($i == ($num_pages - ($leeway + 1)))
+            )
+        )
+        {
+            # put a gap in
+            $out .= "...\n";
+        }
     }
     $out.=<<EOT;
-</tr></table>
+</div>
 EOT
 
     return $out;
