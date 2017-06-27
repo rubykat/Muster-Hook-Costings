@@ -603,7 +603,10 @@ sub _generate_derived_tables {
         }
 
     } # for each page
-    $self->_commit();
+    if ($transaction_on)
+    {
+        $self->_commit();
+    }
 
     return 1;
 } # _generate_derived_tables
@@ -680,7 +683,10 @@ sub _update_all_entries {
             $num_trans = 0;
         }
     }
-    $self->_commit();
+    if ($transaction_on)
+    {
+        $self->_commit();
+    }
     $self->_generate_derived_tables();
 
     print STDERR "UPDATING DONE\n";
