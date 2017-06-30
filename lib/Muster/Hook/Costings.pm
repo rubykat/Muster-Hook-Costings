@@ -92,6 +92,15 @@ sub process {
     my $meta = $leaf->meta;
 
     # -----------------------------------------------------------
+    # All these costings are only relevant for craft inventory pages
+    # so skip everything else
+    # -----------------------------------------------------------
+    if ($leaf->pagename !~ /inventory/)
+    {
+        return $leaf;
+    }
+
+    # -----------------------------------------------------------
     # LABOUR TIME
     # If "construction" is given, use that to calculate the labour time
     # There may be more than one means of contruction; for example,
@@ -277,6 +286,11 @@ sub process {
     # the labour_time will either be defined or derived
     # if no suffix is given, assume minutes
     # -----------------------------------------------------------
+    my $per_hour = (exists $meta->{cost_per_hour}
+        ? $meta->{cost_per_hour}
+        : (exists $self->{config}->{cost_per_hour}
+            ? $self->{config}->{cost_per_hour}
+            : 20));
     if (exists $meta->{labour_time} and defined $meta->{labour_time})
     {
         my $hours;
@@ -301,15 +315,34 @@ sub process {
         }
         if ($hours)
         {
-            my $per_hour = (exists $meta->{cost_per_hour}
-                ? $meta->{cost_per_hour}
-                : (exists $self->{config}->{cost_per_hour}
-                    ? $self->{config}->{cost_per_hour}
-                    : 20));
             $meta->{used_cost_per_hour} = $per_hour;
             $meta->{labour_cost} = $hours * $per_hour;
         }
     }
+    # -----------------------------------------------------------
+    # ITEMIZE TIME and ITEMIZE COSTS
+    # Every item listed in my inventory and listed on Etsy
+    # takes a certain amount of labour:
+    # * photographing
+    # * naming and tagging the photos
+    # * adding the item to the inventory
+    # * adding the item to Etsy
+    # This is in common for all items, no matter what their labour is,
+    # so I'm doing this as a separate cost.
+    # -----------------------------------------------------------
+    my $itemize_mins = (exists $meta->{itemize_time}
+        ? $meta->{itemize_time}
+            : (exists $self->{config}->{itemize_time}
+                ? $self->{config}->{itemize_time}
+                : 30));
+    if ($itemize_mins)
+    {
+        $meta->{itemize_time} = $itemize_mins;
+        my $hours = $itemize_mins / 60.0;
+        $meta->{used_cost_per_hour} = $per_hour;
+        $meta->{itemize_cost} = $hours * $per_hour;
+    }
+
     # -----------------------------------------------------------
     # TOTAL COSTS AND OVERHEADS
     # Calculate total costs from previously derived costs
@@ -318,7 +351,7 @@ sub process {
     # -----------------------------------------------------------
     if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
     {
-        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
+        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
         my $overheads = $self->_calculate_overheads($wholesale);
         $meta->{estimated_overheads1} = $overheads;
         my $retail = $wholesale + $overheads;
