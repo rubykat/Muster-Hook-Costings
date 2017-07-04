@@ -106,7 +106,7 @@ sub process {
     # Check for pagination and query
     my $c = $args{controller}; # build-phase has a controller
     my $n = 1;
-    my $limit = $params{limit};
+    my $limit = (exists $params{limit} ? $params{limit} : 0);
     my $n_id = (exists $params{report_id}
         ? "n_".$params{report_id} : "n");
 

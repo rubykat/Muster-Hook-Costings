@@ -493,6 +493,12 @@ sub _create_tables {
     {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
     }
+    $q = "CREATE UNIQUE INDEX IF NOT EXISTS deepfields_index ON deepfields (page, field)";
+    $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
 
     return 1;
 } # _create_tables
