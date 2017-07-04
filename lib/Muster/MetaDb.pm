@@ -518,7 +518,7 @@ sub _generate_derived_tables {
     # TABLE: flatfields
     # ---------------------------------------------------
     print STDERR "Generating flatfields table\n";
-    my @fieldnames = $self->_get_all_fieldnames();
+    my @fieldnames = $self->_get_all_nonhidden_fieldnames();
 
     # need to define some fields as numeric
     my @field_defs = ();
@@ -748,22 +748,24 @@ sub _get_all_pagenames {
     return @{$pages};
 } # _get_all_pagenames
 
-=head2 _get_all_fieldnames
+=head2 _get_all_nonhidden_fieldnames
 
-List of the unique field-names from the deepfields table.
+List of the unique non-hidden field-names from the deepfields table.
+Hidden field names start with '_' and are not supposed to be put into the flatfields table,
+though they can be queried from the deepfields table.
 
-    @fieldnames = $self->_get_all_fieldnames();
+    @fieldnames = $self->_get_all_nonhidden_fieldnames();
 
 =cut
 
-sub _get_all_fieldnames {
+sub _get_all_nonhidden_fieldnames {
     my $self = shift;
 
     my $dbh = $self->{dbh};
-    my $fields = $self->_do_one_col_query("SELECT DISTINCT field FROM deepfields ORDER BY field;");
+    my $fields = $self->_do_one_col_query("SELECT DISTINCT field FROM deepfields WHERE field NOT GLOB '_*' ORDER BY field;");
 
     return @{$fields};
-} # _get_all_fieldnames
+} # _get_all_nonhidden_fieldnames
 
 =head2 _get_fields_for_page
 
@@ -893,26 +895,23 @@ sub _get_page_meta {
     {
         return undef;
     }
+    # Note that there are three different kinds of files we have data on:
+    # files: just the basic info in the pagefiles table
+    # files-with-filetypes: which have additional meta-data (for example, image file meta-data)
+    # pages: which have additional meta-data, and also children, attachments, and links
     if ($meta->{filetype})
     {
-        # now the rest of the meta, if this has meta
-        $q = "SELECT * FROM flatfields WHERE page = ?;";
+        # Now the rest of the meta, if this has meta
+        # Get this from the deepfields table rather than the flatfields table
+        # because the deepfields table includes "hidden" fields.
+        my $more_meta = $self->_get_fields_for_page($pagename);
 
-        $sth = $self->_prepare($q);
-        if (!$sth)
+        foreach my $key (keys %{$more_meta})
         {
-            croak "FAILED to prepare '$q' $DBI::errstr";
-        }
-        $ret = $sth->execute($pagename);
-        if (!$ret)
-        {
-            croak "FAILED to execute '$q' $DBI::errstr";
-        }
-        # return the first matching row because there should be only one row
-        $meta = $sth->fetchrow_hashref;
-        if (!$meta)
-        {
-            return undef;
+            if (!exists $meta->{$key})
+            {
+                $meta->{$key} = $more_meta->{$key};
+            }
         }
 
         # non-pages don't have links, children, or attachments
