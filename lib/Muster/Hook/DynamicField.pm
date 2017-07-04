@@ -159,7 +159,9 @@ sub get_function_result {
 
     if ($func eq 'math')
     {
-        $value = Math::Calc::Parser->evaluate($argvals);
+        my $result = Math::Calc::Parser->evaluate($argvals);
+        # round the result for niceness
+        $value = sprintf("%.2f",$result);
     }
     elsif ($func eq 'matheq')
     {
