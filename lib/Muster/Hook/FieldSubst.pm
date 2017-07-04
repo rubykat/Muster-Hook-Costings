@@ -77,14 +77,14 @@ sub process {
     my $page = $leaf->pagename;
 
     # substitute {{$var}} variables (source-page)
-    $content =~ s/(\\?)\{\{\$([-\w]+)\}\}/$self->get_field_value($1,$2,$leaf)/eg;
+    $content =~ s/(\\?)\{\{\$([-_\w]+)\}\}/$self->get_field_value($1,$2,$leaf)/eg;
 
     # we can't get other pages' meta-data if we are scanning
     # because they haven't been added to the database yet
     if ($phase eq $Muster::Hooks::PHASE_BUILD)
     {
         # substitute {{$page#var}} variables (source-page)
-        $content =~ s/(\\?)\{\{\$([-\w\/]+)#([-\w]+)\}\}/$self->get_other_page_field_value($1, $3,$leaf,$2)/eg;
+        $content =~ s/(\\?)\{\{\$([-\w\/]+)#([-_\w]+)\}\}/$self->get_other_page_field_value($1, $3,$leaf,$2)/eg;
     }
 
     $leaf->{cooked} = $content;

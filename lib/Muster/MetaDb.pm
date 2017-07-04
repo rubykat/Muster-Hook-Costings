@@ -1246,8 +1246,7 @@ sub _add_page_data {
     # ------------------------------------------------
     foreach my $field (sort keys %meta)
     {
-        if ($field ne 'links'
-                and $field !~ /^_/)
+        if ($field ne 'links')
         {
             my $value = $meta{$field};
             # force all field-names to be lower-case
