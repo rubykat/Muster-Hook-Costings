@@ -17,6 +17,7 @@ use Muster::Hook::Links;
 use File::Basename qw(basename);
 use YAML::Any;
 use Text::NeatTemplate;
+use Math::Calc::Parser;
 
 use Carp 'croak';
 
@@ -96,7 +97,7 @@ sub process {
 
 =head2 format_yaml
 
-{&format_yaml(fieldname,yaml_value)
+{&format_yaml(fieldname,yaml_value)}
 
 Format a yaml field.
 
@@ -196,7 +197,7 @@ sub _format_array {
 
 =head2 repeat_n
 
-{&repeat_n(num,value)
+{&repeat_n(num,value)}
 
 Repeat a format N times.
 Simple substitution: $$N is the number
@@ -223,7 +224,7 @@ sub repeat_n {
 
 =head2 repeat_for
 
-{&repeat_for(pipe_value,value)
+{&repeat_for(pipe_value,value)}
 
 Repeat a format for each "pipe-value" (pipe-separated value).
 Simple substitution:
@@ -253,5 +254,25 @@ sub repeat_for {
     }
     return join("", @out);
 } # repeat_for
+
+=head2 math
+
+{&math(mathexpr)}
+
+Do math with the given fields.
+
+=cut
+sub math {
+    my $expression = shift;
+
+    # if they didn't give us anything, return
+    if (!$expression)
+    {
+	return '';
+    }
+    my $result = Math::Calc::Parser->evaluate($expression);
+
+    return $result;
+} # math
 
 1;
