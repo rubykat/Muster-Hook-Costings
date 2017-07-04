@@ -24,6 +24,7 @@ use Muster::Hooks;
 use Muster::LeafFile;
 use YAML::Any;
 use POSIX qw(strftime);
+use Math::Calc::Parser;
 
 =head1 METHODS
 
@@ -77,8 +78,11 @@ sub process {
     my $content = $leaf->cooked();
     my $page = $leaf->pagename;
 
-    # substitute {{!var}} variables (source-page)
+    # substitute {{!var}} variables
     $content =~ s/(\\?)\{\{\!([-\w]+)\}\}/$self->get_dynamic_value($1,$2,$leaf)/eg;
+    
+    # substitute {{!fn(...)}} functions
+    $content =~ s/(\\?)\{\{\!([-\w]+)\(([^)]+)\)\}\}/$self->get_function_result($1,$2,$3,$leaf)/eg;
 
     $leaf->{cooked} = $content;
     return $leaf;
@@ -97,13 +101,13 @@ sub get_dynamic_value {
 
     if (length $escape)
     {
-	return "{{\$${field}}}";
+	return "{{\!${field}}}";
     }
 
     # force all fields to lower-case
     $field = lc($field);
 
-    my $value = '';
+    my $value;
 
     if ($field eq 'now')
     {
@@ -133,6 +137,50 @@ sub get_dynamic_value {
     }
     return $value;
 } # get_dynamic_value
+
+=head2 get_function_result
+
+Process the given function for this page.
+
+=cut
+sub get_function_result {
+    my $self = shift;
+    my $escape = shift;
+    my $func = shift;
+    my $argvals = shift;
+    my $leaf = shift;
+
+    if (length $escape)
+    {
+	return "{{\!${func}(${argvals})}}";
+    }
+
+    my $value;
+
+    if ($func eq 'math')
+    {
+        $value = Math::Calc::Parser->evaluate($argvals);
+    }
+    elsif ($func eq 'matheq')
+    {
+        my $result = Math::Calc::Parser->evaluate($argvals);
+        $value = "${argvals} = ${result}";
+    }
+
+    if (!defined $value)
+    {
+        return '';
+    }
+    if (ref $value eq 'ARRAY')
+    {
+        $value = join(' ', @{$value});
+    }
+    elsif (ref $value eq 'HASH')
+    {
+        $value = Dump($value);
+    }
+    return $value;
+} # get_function_result
 
 
 1;
