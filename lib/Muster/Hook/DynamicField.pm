@@ -117,13 +117,6 @@ sub get_dynamic_value {
     {
         $value = strftime '%Y', localtime;
     }
-    elsif ($field eq 'firstimage')
-    {
-        # find the first image file attached to this page
-        my $page = $leaf->pagename;
-        my $ret = $self->{metadb}->query("SELECT page FROM flatfields WHERE parent_page = '$page' AND (extension = 'jpg' OR extension = 'png' OR extension = 'gif') ORDER BY page LIMIT 1");
-        $value = (scalar @{$ret} ? $ret->[0] : '');
-    }
 
 
     if (!defined $value)
