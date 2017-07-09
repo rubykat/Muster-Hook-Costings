@@ -118,6 +118,25 @@ sub delete_one_page {
     return 0;
 } # delete_one_page
 
+=head2 update_derived_tables
+
+Update the derived tables for all pages.
+
+=cut
+
+sub update_derived_tables {
+    my $self = shift;
+    my %args = @_;
+
+    if (!$self->_connect())
+    {
+        return undef;
+    }
+
+    $self->_generate_derived_tables();
+
+} # update_derived_tables
+
 =head2 page_or_file_info
 
 Get the info about one page. Returns undef if the page isn't there.
@@ -524,6 +543,14 @@ sub _generate_derived_tables {
     # TABLE: flatfields
     # ---------------------------------------------------
     print STDERR "Generating flatfields table\n";
+    
+    # Drop the table, as it is going to be re-defined.
+    my $q = "DROP TABLE IF EXISTS flatfields;";
+    my $ret = $dbh->do($q);
+    if (!$ret)
+    {
+        croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+    }
     my @fieldnames = $self->_get_all_nonhidden_fieldnames();
 
     # need to define some fields as numeric
@@ -539,9 +566,9 @@ sub _generate_derived_tables {
             push @field_defs, $field;
         }
     }
-    my $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
+    $q = "CREATE TABLE IF NOT EXISTS flatfields (page PRIMARY KEY, "
     . join(", ", @field_defs) .");";
-    my $ret = $dbh->do($q);
+    $ret = $dbh->do($q);
     if (!$ret)
     {
         croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
@@ -614,24 +641,26 @@ sub _generate_derived_tables {
         $self->_commit();
     }
 
+    print STDERR "Generated flatfields table\n";
     return 1;
 } # _generate_derived_tables
 
-=head2 _drop_tables
+=head2 _drop_main_tables
 
-Drop all the tables in the database.
+Drop all the tables in the database except the flatfields table (which will be done
+just before it is recreated)
 If one is doing a scan-all-pages pass, dropping and re-creating may be quicker than updating.
 
 =cut
 
-sub _drop_tables {
+sub _drop_main_tables {
     my $self = shift;
 
     return unless $self->{dbh};
 
     my $dbh = $self->{dbh};
 
-    foreach my $table (qw(pagefiles links deepfields flatfields))
+    foreach my $table (qw(pagefiles links deepfields))
     {
         my $q = "DROP TABLE IF EXISTS $table;";
         my $ret = $dbh->do($q);
@@ -642,7 +671,7 @@ sub _drop_tables {
     }
 
     return 1;
-} # _drop_tables
+} # _drop_main_tables
 
 =head2 _update_all_entries
 
@@ -660,7 +689,7 @@ sub _update_all_entries {
     my $dbh = $self->{dbh};
 
     # it may save time to drop all the tables and create them again
-    $self->_drop_tables();
+    $self->_drop_main_tables();
     $self->_create_tables();
 
     # update/add pages
@@ -693,7 +722,6 @@ sub _update_all_entries {
     {
         $self->_commit();
     }
-    $self->_generate_derived_tables();
 
     print STDERR "UPDATING DONE\n";
 } # _update_all_entries
@@ -1250,6 +1278,27 @@ sub _add_page_data {
     # Add both pages and non-pages, because non-pages like images
     # can also have extra meta-data.
     # ------------------------------------------------
+
+    # Need to delete the fields that are no longer there
+    my $oldmeta = $self->_get_fields_for_page($pagename);
+    foreach my $field (sort keys %{$oldmeta})
+    {
+        if (!exists $meta{$field})
+        {
+            $q = "DELETE FROM deepfields WHERE page = ? AND field = ?;";
+            my $sth = $self->_prepare($q);
+            if (!$sth)
+            {
+                croak __PACKAGE__ . " failed to prepare '$q' : $DBI::errstr";
+            }
+            $ret = $sth->execute($pagename, $field);
+            if (!$ret)
+            {
+                croak __PACKAGE__ . " failed '$q' : $DBI::errstr";
+            }
+        }
+    }
+    # Now update with the new values
     foreach my $field (sort keys %meta)
     {
         if ($field ne 'links')

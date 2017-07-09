@@ -58,20 +58,62 @@ sub init {
     return $self;
 } # init
 
-=head2 scan_one_page
+=head2 scan_some_pagefiles
 
-Scan a single page.
+Scan a set of pagefile; this is NOT going to be all the pages, just some of them.
+This expects the name of a file relative to the page_dir the file is in.
 
-    $self->scan_one_page($page);
+    $self->scan_some_pagefiles(@files);
 
 =cut
 
-sub scan_one_page {
+sub scan_some_pagefiles {
     my $self = shift;
-    my $pagename = shift;
+    my @files = @_;
 
-    $pagename = 'index' if !$pagename;
+    foreach my $file (@files)
+    {
+        $self->_scan_one_pagefile($file);
+    }
 
+    $self->{metadb}->update_derived_tables();
+} # scan_some_pagefiles
+
+=head2 scan_all
+
+Scan all pages.
+
+=cut
+
+sub scan_all {
+    my $self = shift;
+
+    $self->_find_and_scan_all();
+
+    $self->{metadb}->update_derived_tables();
+} # scan_all
+
+=head1 Helper Functions
+
+These are private to the module.
+
+=head2 _scan_one_pagefile
+
+Scan a single pagefile; this expects the name of a file
+relative to the page_dir the file is in.
+
+    $self->_scan_one_pagefile($filename);
+
+=cut
+
+sub _scan_one_pagefile {
+    my $self = shift;
+    my $filename = shift;
+
+    return if !$filename;
+
+    my $pagename = $filename;
+    $pagename =~ s/\.\w+$//; # remove the extension to get the pagename
     my $found_page;
     foreach my $page_dir (@{$self->{page_dirs}})
     {
@@ -80,13 +122,9 @@ sub scan_one_page {
             # only interested in files with extensions
             if ($File::Find::name =~ /\.\w+$/)
             {
-                my $chopped_file = $File::Find::name;
-                $chopped_file =~ s/\.\w+$//;
-                # this 'pagefile' won't be the file itself
-                # it will be the file without its extension
-                my $pagefile = File::Spec->catfile($page_dir, $pagename);
+                my $pagefile = File::Spec->catfile($page_dir, $filename);
 
-                if (-f -r $File::Find::name and $chopped_file eq $pagefile)
+                if (-f -r $File::Find::name and $File::Find::name eq $pagefile)
                 {
                     warn "SCANNING: $File::Find::name\n";
                     my $leaf = $self->_create_and_scan_leaf(
@@ -109,61 +147,31 @@ sub scan_one_page {
         find({wanted=>$finder, no_chdir=>1}, $page_dir);
     }
 
-    unless (defined $found_page)
+    if (!defined $found_page)
     {
-        warn __PACKAGE__, " scan_one_page page '$pagename' not found";
-        return;
-    }
-
-    my $meta = $found_page->meta();
-    unless (defined $meta)
-    {
-        warn __PACKAGE__, " scan_one_page meta for '$pagename' not found";
-        return;
-    }
-    # add the meta to the metadb
-    $self->{metadb}->update_one_page($pagename, %{$meta});
-
-    print Dump($meta);
-
-} # scan_one_page
-
-=head2 delete_one_page
-
-Delete a single page.
-
-    $self->delete_one_page($page);
-
-=cut
-
-sub delete_one_page {
-    my $self = shift;
-    my $pagename = shift;
-
-    if ($self->{metadb}->delete_one_page($pagename))
-    {
-        print "DELETED: $pagename\n";
+        # the page was not found, therefore it has been deleted
+        if ($self->{metadb}->delete_one_page($pagename))
+        {
+            print "DELETED: $filename\n";
+        }
+        else
+        {
+            print "UNKNOWN: $filename\n";
+        }
     }
     else
     {
-        print "UNKNOWN: $pagename\n";
+        my $meta = $found_page->meta();
+        unless (defined $meta)
+        {
+            warn __PACKAGE__, " scan_one_pagefile meta for '$pagename' not found";
+            return;
+        }
+        # add the meta to the metadb
+        $self->{metadb}->update_one_page($pagename, %{$meta});
     }
 
-} # delete_one_page
-
-=head2 scan_all
-
-Scan all pages.
-
-=cut
-
-sub scan_all {
-    my $self = shift;
-
-    $self->_find_and_scan_all();
-
-    print "DONE\n";
-} # scan_all
+} # _scan_one_pagefile
 
 =head2 _find_and_scan_all
 

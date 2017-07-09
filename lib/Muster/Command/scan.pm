@@ -14,8 +14,8 @@ Content management system - scan pages for metadata
 use Mojo::Base 'Mojolicious::Command';
 use Muster::Scanner;
 
-has description => 'Scans the known pages to collect their metadata; a minus in front of a page deletes it.';
-has usage       => "Usage: APPLICATION scan [-][page]\n";
+has description => 'Scans the known pages to collect their metadata; if no arguments, scans all pages';
+has usage       => "Usage: APPLICATION scan [page] ...\n";
 
 sub run {
     my ($self, @args) = @_;
@@ -24,17 +24,7 @@ sub run {
     $scanner->init();
     if (scalar @args)
     {
-        foreach my $page (@args)
-        {
-            if ($page =~ /^-(.*)/)
-            {
-                $scanner->delete_one_page($1);
-            }
-            else
-            {
-                $scanner->scan_one_page($page);
-            }
-        }
+        $scanner->scan_some_pagefiles(@args);
     }
     else
     {
