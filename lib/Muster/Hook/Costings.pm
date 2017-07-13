@@ -352,15 +352,15 @@ sub process {
     if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
     {
         my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
-        my $overheads = $self->_calculate_overheads($wholesale);
+        my $overheads = calculate_overheads($wholesale);
         $meta->{estimated_overheads1} = $overheads;
         my $retail = $wholesale + $overheads;
-        $overheads = $self->_calculate_overheads($retail);
+        $overheads = calculate_overheads($retail);
         $meta->{estimated_overheads} = $overheads;
         $meta->{estimated_cost} = $retail;
         if ($meta->{actual_price})
         {
-            $meta->{actual_overheads} = $self->_calculate_overheads($meta->{actual_price});
+            $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
             $meta->{actual_return} = $meta->{actual_price} - $meta->{actual_overheads};
         }
     }
@@ -416,13 +416,12 @@ sub process {
     return $leaf;
 } # process
 
-=head2 _calculate_overheads
+=head2 calculate_overheads
 
 Calculate overheads like listing fees and COMMISSION (which depends on the total, backwards)
 
 =cut
-sub _calculate_overheads {
-    my $self = shift;
+sub calculate_overheads {
     my $bare_cost = shift;
 
     # Etsy listing fees are 20c US per listing per four months
@@ -443,7 +442,7 @@ sub _calculate_overheads {
     # GST is not included because I don't have to pay GST because I'm not making $75,000
 
     return $overheads;
-} # _calculate_overheads
+} # calculate_overheads
 
 =head2 _do_one_col_query
 
