@@ -152,11 +152,11 @@ sub _scan_one_pagefile {
         # the page was not found, therefore it has been deleted
         if ($self->{metadb}->delete_one_page($pagename))
         {
-            print "DELETED: $filename\n";
+            warn "DELETED: $filename\n";
         }
         else
         {
-            print "UNKNOWN: $filename\n";
+            warn "UNKNOWN: $filename\n";
         }
     }
     else
