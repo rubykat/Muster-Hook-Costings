@@ -60,7 +60,7 @@ sub init {
 
 =head2 scan_some_pagefiles
 
-Scan a set of pagefile; this is NOT going to be all the pages, just some of them.
+Scan a set of pagefiles; this is NOT going to be all the pages, just some of them.
 This expects the name of a file relative to the page_dir the file is in.
 
     $self->scan_some_pagefiles(@files);
