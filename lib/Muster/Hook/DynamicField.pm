@@ -183,7 +183,7 @@ sub get_function_result {
             my $wholesale = $leaf->{meta}->{materials_cost} + $labour_cost + $itemize_cost;
             my $overheads = Muster::Hook::Costings::calculate_overheads($wholesale);
             my $retail = $wholesale + $overheads;
-            $value = $retail;
+            $value = "dyncost($cost_per_hour) = $retail";
         }
     }
 
