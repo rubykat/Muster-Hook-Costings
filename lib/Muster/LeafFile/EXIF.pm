@@ -33,7 +33,8 @@ sub build_meta {
     my $info = ImageInfo($self->filename);
 
     my $is_gutenberg_book = 0;
-    if ($info->{'Identifier'} =~ m!http://www.gutenberg.org/ebooks/\d+!)
+    if (exists $info->{Identifier}
+            and $info->{'Identifier'} =~ m!http://www.gutenberg.org/ebooks/\d+!)
     {
         $is_gutenberg_book = 1;
         # If this is a Gutenberg book, the Identifier holds the correct URL
