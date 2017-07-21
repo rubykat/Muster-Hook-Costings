@@ -32,6 +32,14 @@ sub build_meta {
     # What is in the EXIF overrides the defaults
     my $info = ImageInfo($self->filename);
 
+    my $is_gutenberg_book = 0;
+    if ($info->{'Identifier'} =~ m!http://www.gutenberg.org/ebooks/\d+!)
+    {
+        $is_gutenberg_book = 1;
+        # If this is a Gutenberg book, the Identifier holds the correct URL
+        $meta->{'url'} = $info->{'Identifier'};
+    }
+
     # There are multiple fields which could be used as a file "description".
     # Check through them until you find a non-empty one.
     my $description = '';
@@ -40,6 +48,7 @@ sub build_meta {
         if (exists $info->{$field} and $info->{$field} and !$description)
         {
             $description = $info->{$field};
+            $description =~ s/\n$//; # remove trailing newlines
         }
     }
     $meta->{description} = $description if $description;
@@ -67,6 +76,19 @@ sub build_meta {
         }
     }
     $meta->{copyright} = $copyright if $copyright;
+
+    # The URL could be from the Source or the Identifier
+    # Check through them until you find a non-empty one which contains an actual URL
+    foreach my $field (qw(Source Identifier))
+    {
+        if (exists $info->{$field}
+                and $info->{$field}
+                and $info->{$field} =~ /^http/
+                and !exists $meta->{url})
+        {
+            $meta->{url} = $info->{$field};
+        }
+    }
 
     # There are multiple fields which could be used as a file date.
     # Check through them until you find a non-empty one.
@@ -100,10 +122,8 @@ sub build_meta {
     $meta->{tags} = join('|', sort keys %tags);
     delete $meta->{tags} if !$meta->{tags}; # remove empty tag-field
 
-    # There are SOOOOOO many fields in EXIF data, just remember
-    # the ones which I am interested in.
+    # There are SOOOOOO many fields in EXIF data, just remember a subset of them
     foreach my $field (qw(
-CameraType
 FileSize
 Flash
 ImageHeight
@@ -111,7 +131,7 @@ ImageSize
 ImageWidth
 Megapixels
 PageCount
-Source
+Location
 Title
 ))
     {
