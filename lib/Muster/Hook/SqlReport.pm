@@ -394,6 +394,11 @@ sub do_report {
 	headers=>\@headers,
 	groups=>\@groups,
 	);
+    if ($args{debug})
+    {
+        my $stmt = $sth1->{Statement};
+        $out = "<p>$stmt</p>\n$out";
+    }
     if ($out and $report_div and $report_class)
     {
         $out =<<EOT;
