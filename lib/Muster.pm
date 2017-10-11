@@ -108,7 +108,7 @@ sub startup {
     $self->plugin('Muster::PagesHelper');
     
     $self->plugin('Foil');
-    $self->plugin(NYTProf => $mojo_config);
+    #$self->plugin(NYTProf => $mojo_config);
 
     # -------------------------------------------
     # Templates
