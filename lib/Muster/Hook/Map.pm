@@ -240,6 +240,11 @@ sub process {
     return $result;
 } # process
 
+=head2 page_depth
+
+Calculate the page depth of the given page.
+
+=cut
 sub page_depth {
     my $page = shift;
 

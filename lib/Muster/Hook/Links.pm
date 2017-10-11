@@ -135,6 +135,11 @@ sub process {
     return $leaf;
 } # process
 
+=head2 is_externallink
+
+Is this an external link?
+
+=cut
 sub is_externallink {
     my $self = shift;
     my $page = shift;
@@ -148,6 +153,11 @@ sub is_externallink {
     return ($url =~ /$Url_Regexp|$Email_Regexp/)
 }
 
+=head2 linkpage
+
+Convert the link into a page-name.
+
+=cut
 sub linkpage {
     my $self = shift;
     my $link=shift;
@@ -157,6 +167,11 @@ sub linkpage {
     return $link;
 }
 
+=head2 externallink
+
+Process an external link.
+
+=cut
 sub externallink {
     my $self = shift;
     my $url = shift;
@@ -184,6 +199,11 @@ sub externallink {
     return "<a href=\"$url\">$pagetitle</a>";
 }
 
+=head2 htmllink
+
+Generate the HTML for a link.
+
+=cut
 sub htmllink {
     my $self = shift;
     my $page=shift;

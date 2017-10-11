@@ -22,12 +22,22 @@ use Hash::Merge;
 # use a fast YAML
 use YAML::XS;
 
+=head2 is_this_a_page
+
+Test if this type of file creates a page or is just a file.
+
+=cut
 sub is_this_a_page {
     my $self = shift;
 
     return 1;
 }
 
+=head2 build_meta
+
+Fill in the meta-data for this file.
+
+=cut
 sub build_meta {
     my $self = shift;
 
@@ -66,7 +76,11 @@ sub build_meta {
     return $meta;
 }
 
-# the file has YAML if the FIRST line is '---'
+=head2 has_yaml
+
+The file has YAML if the FIRST line is '---'
+
+=cut
 sub has_yaml {
     my $self = shift;
 
@@ -84,16 +98,25 @@ sub has_yaml {
     return ($first_line eq '---');
 }
 
+=head2 build_raw
+
+Get the "raw" data of the file.
+
+=cut
 sub build_raw {
     my $self = shift;
 
     return $self->get_content_part();
 }
 
-# Get the YAML part of a file (if any)
-# by reading the stuff between the first set of --- lines
-# Don't load the whole file!
-# When we want the YAML, we are scanning, and we don't want the content.
+=head2 get_yaml_part
+
+Get the YAML part of a file (if any)
+by reading the stuff between the first set of --- lines
+Don't load the whole file!
+When we want the YAML, we are scanning, and we don't want the content.
+
+=cut
 sub get_yaml_part {
     my $self = shift;
 
@@ -126,6 +149,11 @@ sub get_yaml_part {
     return $yaml_str;
 }
 
+=head2 get_content_part
+
+Get the content part of the file
+
+=cut
 sub get_content_part {
     my $self = shift;
 
@@ -169,6 +197,11 @@ sub get_content_part {
     return $content;
 }
 
+=head2 build_html
+
+Convert the content into HTML format.
+
+=cut
 sub build_html {
     my $self = shift;
 
@@ -182,6 +215,11 @@ sub build_html {
     return markdown($content);
 }
 
+=head2 wordcount
+
+Calculate the word-count of the content.
+
+=cut
 sub wordcount {
     my $self = shift;
 

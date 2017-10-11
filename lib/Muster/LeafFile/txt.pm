@@ -18,12 +18,23 @@ use Carp;
 use Mojo::Util      'decode';
 use YAML::Any;
 
+=head2 is_this_a_page
+
+Test if this type of file creates a page or is just a file.
+
+=cut
 sub is_this_a_page {
     my $self = shift;
 
     return 1;
 }
 
+=head2 build_html
+
+Convert the content into HTML (output) format.
+If the output is going to be .txt, then leave it as it is.
+
+=cut
 sub build_html {
     my $self = shift;
 
@@ -42,6 +53,11 @@ EOT
 
 }
 
+=head2 build_meta
+
+Fill in the meta-data for this file.
+
+=cut
 sub build_meta {
     my $self = shift;
 
@@ -53,6 +69,11 @@ sub build_meta {
     return $meta;
 }
 
+=head2 wordcount
+
+Calculate the word-count of the content.
+
+=cut
 sub wordcount {
     my $self = shift;
 

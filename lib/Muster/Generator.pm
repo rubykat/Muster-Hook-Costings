@@ -10,17 +10,31 @@ Muster::Generator - generates boilerplate for muster webapp
 
 use Mojo::Base 'Mojolicious::Command';
 
-# store everything in files
+=head2 init
+
+Generate the boilerplate files.
+
+=cut
 sub init {
     my $self = shift;
     $self->generate_config_file;
     $self->generate_web_app;
 }
 
+=head2 generate_config_file
+
+Generate a boilerplate muster.conf file
+
+=cut
 sub generate_config_file {
     shift->render_to_rel_file("muster.conf" => 'muster.conf');
 }
 
+=head2 generate_web_app
+
+Generate a boilerplate webapp.pl file
+
+=cut
 sub generate_web_app {
     my $self = shift;
     $self->render_to_rel_file('webapp.pl' => 'webapp.pl');

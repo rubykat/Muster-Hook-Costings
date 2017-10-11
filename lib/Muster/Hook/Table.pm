@@ -121,6 +121,11 @@ sub process {
     return $html;
 } # process
 
+=head2 is_dsv_data
+
+Is the data DSV (delimiter-separated-values)?
+
+=cut
 sub is_dsv_data ($) {
     my $text = shift;
 
@@ -128,6 +133,11 @@ sub is_dsv_data ($) {
     return $line =~ m{.+\|};
 }
 
+=head2 split_csv
+
+Use Text::CSV to split the data into lines and columns.
+
+=cut
 sub split_csv ($$) {
     my @text_lines = split(/\n/, shift);
     my $delimiter = shift;
@@ -159,6 +169,11 @@ sub split_csv ($$) {
     return @data;
 }
 
+=head2 split_dsv
+
+Split the data into lines and columns using delimiters.
+
+=cut
 sub split_dsv ($$) {
     my @text_lines = split(/\n/, shift);
     my $delimiter = shift;
@@ -173,6 +188,11 @@ sub split_dsv ($$) {
     return @data;
 }
 
+=head2 genrow
+
+Generate a row of the table.
+
+=cut
 sub genrow ($@) {
     my $self = shift;
     my %params=%{shift()};
