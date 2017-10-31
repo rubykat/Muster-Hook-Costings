@@ -79,10 +79,8 @@ sub process {
     my $content = $leaf->cooked();
     my $page = $leaf->pagename;
 
-    # substitute {{!fn(...)}} functions
-    $content =~ s/(\\?)\{\{\!([-\w]+)\(([^)]+)\)\}\}/$self->get_function_result($1,$2,$3,$leaf)/eg;
-    # substitute {{!fn[...]}} functions for functions that need parens as args
-    $content =~ s/(\\?)\{\{\!([-\w]+)\[([^\]]+)\]\}\}/$self->get_function_result($1,$2,$3,$leaf)/eg;
+    # substitute dyncost(...) 
+    $content =~ s/(\\?)(dyncost)\(([^)]+)\)/$self->get_function_result($1,$2,$3,$leaf)/eg;
 
     $leaf->{cooked} = $content;
     return $leaf;
