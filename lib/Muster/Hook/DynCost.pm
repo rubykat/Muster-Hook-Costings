@@ -79,9 +79,6 @@ sub process {
     my $content = $leaf->cooked();
     my $page = $leaf->pagename;
 
-    # substitute {{!var}} variables
-    $content =~ s/(\\?)\{\{\!([-\w]+)\}\}/$self->get_dynamic_value($1,$2,$leaf)/eg;
-    
     # substitute {{!fn(...)}} functions
     $content =~ s/(\\?)\{\{\!([-\w]+)\(([^)]+)\)\}\}/$self->get_function_result($1,$2,$3,$leaf)/eg;
     # substitute {{!fn[...]}} functions for functions that need parens as args
@@ -90,56 +87,6 @@ sub process {
     $leaf->{cooked} = $content;
     return $leaf;
 } # process
-
-=head2 get_dynamic_value
-
-Get the dynamic value for this page.
-
-=cut
-sub get_dynamic_value {
-    my $self = shift;
-    my $escape = shift;
-    my $field = shift;
-    my $leaf = shift;
-
-    if (length $escape)
-    {
-	return "{{\!${field}}}";
-    }
-
-    # force all fields to lower-case
-    $field = lc($field);
-
-    my $value;
-
-    if ($field eq 'now')
-    {
-        $value = strftime '%H:%M:%S', localtime;
-    }
-    elsif ($field eq 'today')
-    {
-        $value = strftime '%Y-%m-%d', localtime;
-    }
-    elsif ($field eq 'thisyear')
-    {
-        $value = strftime '%Y', localtime;
-    }
-
-
-    if (!defined $value)
-    {
-        return '';
-    }
-    if (ref $value eq 'ARRAY')
-    {
-        $value = join(' ', @{$value});
-    }
-    elsif (ref $value eq 'HASH')
-    {
-        $value = Dump($value);
-    }
-    return $value;
-} # get_dynamic_value
 
 =head2 get_function_result
 
@@ -172,7 +119,7 @@ sub get_function_result {
             my $wholesale = $leaf->{meta}->{materials_cost} + $labour_cost + $itemize_cost;
             my $overheads = Muster::Hook::Costings::calculate_overheads($wholesale);
             my $retail = $wholesale + $overheads;
-            $value = "dyncost($cost_per_hour) = $retail";
+            $value = "dyncost($cost_per_hour) = $wholesale + $overheads = $retail";
         }
     }
 
