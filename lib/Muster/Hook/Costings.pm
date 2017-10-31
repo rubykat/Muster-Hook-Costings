@@ -420,25 +420,20 @@ Calculate overheads like listing fees and COMMISSION (which depends on the total
 sub calculate_overheads {
     my $bare_cost = shift;
 
-    # Etsy listing fees are 20c US per listing per four months;
-    # but I can't assume that a listing will sell within that period, so double that.
-    # Etsy promoted listings depend on one's budget;
-    # I'm currently doing $1.50 a day, spread over N items, so need to guestimate that.
+    # Etsy listing fees are 20c US per listing per four months.
+    # Etsy promoted listings depend on one's budget.
     # Etsy transaction fees are: 3.5% commission
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
-    my $overheads = ((0.2 / 0.7) * 2)
-    + 0.5
-    + ($bare_cost * 0.035)
-    + 0.25
-    + ($bare_cost * 0.04);
+    # See this thread: https://www.etsy.com/teams/7722/discussions/discuss/18516013/
+    # They reckon that adding 6-7% to the price is a good ballpark figure.
+    # And it's certainly easier to calculate.
+    # Don't forget that with their fees being in US dollars, add in the exchange rate of 0.7 and that comes to a round 10%
+    # So I'll just make it 10%.
+    my $overheads = $bare_cost * 0.10;
 
     # And now Etsy are charging GST on their fees
     $overheads += $overheads * 0.1;
 
-    # Add another 5% for random other overheads, such as handling.
-    $bare_cost += $overheads;
-    $overheads += ($bare_cost * 0.05);
-    
     # I'm not including Paypal here -- that's for if I'm not selling through Etsy.
     # (Paypal fees: 3.5% plus 30c per transaction?)
     # GST is not included because I don't have to pay GST because I'm not making $75,000
