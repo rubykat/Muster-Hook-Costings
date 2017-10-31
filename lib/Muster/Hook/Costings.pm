@@ -434,6 +434,10 @@ sub calculate_overheads {
     # And now Etsy are charging GST on their fees
     $overheads += $overheads * 0.1;
 
+    # Add another 4% for random other overheads, such as handling.
+    $bare_cost += $overheads;
+    $overheads += ($bare_cost * 0.04);
+    
     # I'm not including Paypal here -- that's for if I'm not selling through Etsy.
     # (Paypal fees: 3.5% plus 30c per transaction?)
     # GST is not included because I don't have to pay GST because I'm not making $75,000
