@@ -362,49 +362,60 @@ sub process {
     }
     if (exists $meta->{postage} and defined $meta->{postage})
     {
-        # Note that all my jewellery is too thick to be able to be sent as a Large Letter.
+        # Note that some of my jewellery is too thick to be able to be sent as a Large Letter,
+        # while the really flat pieces are do fit into the Large Letter category.
+        # Postage for a Large Letter up to 250g is $3.00.
+        # Registered post within Australia is an extra $4.00
+        #
         # Postage within AU for a small-500g parcel is $7.60.
-        # Putting in the prices here for Economy-Air for overseas parcels. But round to a round number.
-        # Price as of 13-05-2017
+        # Putting in the prices for Standard parcels because they have tracking, while Economy Air doesn't.
+        # Price as of 2017-11-06
         # Plus the cost of the packaging.
         # The very smallest padded bags range from 30c to $2 each - ha!
         # I'm not sure what size of bag I would need for the larger/heavier items
         # (apart from Rayvyn's scarf, which barely fits into a size-4 bag)
         # (but it is interesting, that despite its bulk, it still weighs less than 500g)
-        if ($meta->{postage} eq 'light') # less than 500g
+        if ($meta->{postage} eq 'large-letter') # less than 250g, less than 2cm thick
+        {
+            $meta->{postage_au} = 3.00 + 1;
+            $meta->{postage_nz} = 5.50 + 1;
+            $meta->{postage_us} = 9.00 + 1;
+            $meta->{postage_uk} = 9.00 + 1;
+        }
+        elsif ($meta->{postage} eq 'light') # less than 500g
         {
             $meta->{postage_au} = 7.60 + 1;
-            $meta->{postage_nz} = 12.00 + 1; # 11.86
-            $meta->{postage_us} = 16.00 + 1; # 15.85
-            $meta->{postage_uk} = 20.50 + 1; # 20.46
+            $meta->{postage_nz} = 18.00 + 1;
+            $meta->{postage_us} = 24.00 + 1;
+            $meta->{postage_uk} = 28.50 + 1;
         }
         elsif ($meta->{postage} eq 'light-large') # less than 500g, but big size, needs a larger envelope
         {
             $meta->{postage_au} = 7.60 + 2;
-            $meta->{postage_nz} = 12.00 + 2;
-            $meta->{postage_us} = 16.00 + 2;
-            $meta->{postage_uk} = 20.50 + 2;
+            $meta->{postage_nz} = 18.00 + 2;
+            $meta->{postage_us} = 24.00 + 2;
+            $meta->{postage_uk} = 28.50 + 2;
         }
         elsif ($meta->{postage} eq 'middling') # up to 1kg
         {
-            $meta->{postage_au} = 16.40 + 2;
-            $meta->{postage_nz} = 24.00 + 2;
-            $meta->{postage_us} = 33.50 + 2;
-            $meta->{postage_uk} = 35.50 + 2;
+            $meta->{postage_au} = 16.65 + 2;
+            $meta->{postage_nz} = 30.50 + 2;
+            $meta->{postage_us} = 41.20 + 2;
+            $meta->{postage_uk} = 43.10 + 2;
         }
         elsif ($meta->{postage} eq 'heavy') # up to 1.5 kg
         {
-            $meta->{postage_au} = 19.50 + 2;
-            $meta->{postage_nz} = 29.00 + 2;
-            $meta->{postage_us} = 45.50 + 2;
-            $meta->{postage_uk} = 48.00 + 2;
+            $meta->{postage_au} = 19.80 + 2;
+            $meta->{postage_nz} = 36.10 + 2;
+            $meta->{postage_us} = 52.40 + 2;
+            $meta->{postage_uk} = 54.60 + 2;
         }
         elsif ($meta->{postage} eq 'v-heavy') # up to 2kg
         {
-            $meta->{postage_au} = 19.50 + 2;
-            $meta->{postage_nz} = 34.00 + 2;
-            $meta->{postage_us} = 58.00 + 2;
-            $meta->{postage_uk} = 60.00 + 2;
+            $meta->{postage_au} = 19.80 + 2;
+            $meta->{postage_nz} = 41.10 + 2;
+            $meta->{postage_us} = 64.70 + 2;
+            $meta->{postage_uk} = 67.10 + 2;
         }
     }
 
