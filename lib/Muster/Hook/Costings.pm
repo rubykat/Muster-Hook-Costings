@@ -246,7 +246,7 @@ sub process {
                 elsif ($item->{type} eq 'supplies')
                 {
                     my $cref = $self->_do_n_col_query('supplies',
-                        "SELECT cost,materials,title,tags FROM supplies WHERE Name = '$item->{name}';");
+                        "SELECT cost,materials,title,tags FROM supplies_info WHERE Name = '$item->{name}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
