@@ -317,6 +317,7 @@ sub process {
     }
     # -----------------------------------------------------------
     # ITEMIZE TIME and ITEMIZE COSTS
+    # Inventory:
     # Every item listed in my inventory and listed on Etsy
     # takes a certain amount of labour:
     # * photographing
@@ -325,12 +326,28 @@ sub process {
     # * adding the item to Etsy
     # This is in common for all items, no matter what their labour is,
     # so I'm doing this as a separate cost.
+    #
+    # Components:
+    # This also takes labour, but not as much:
+    # * photographing
+    # * naming and tagging the photos
+    # * adding the item to the components
     # -----------------------------------------------------------
-    my $itemize_mins = (exists $meta->{itemize_time}
-        ? $meta->{itemize_time}
+    my $itemize_mins = 0;
+    if ($leaf->pagename =~ /inventory/)
+    {
+        $itemize_mins = (exists $meta->{itemize_time}
+            ? $meta->{itemize_time}
             : (exists $self->{config}->{itemize_time}
                 ? $self->{config}->{itemize_time}
                 : 20));
+    }
+    else
+    {
+        $itemize_mins = (exists $meta->{itemize_time}
+            ? $meta->{itemize_time}
+                : 5);
+    }
     if ($itemize_mins)
     {
         $meta->{itemize_time} = $itemize_mins;
@@ -340,27 +357,39 @@ sub process {
     }
 
     # -----------------------------------------------------------
-    # TOTAL COSTS AND OVERHEADS
+    # INVENTORY TOTAL COSTS AND OVERHEADS
     # Calculate total costs from previously derived costs
     # Add in the overheads, then re-calculate the total;
     # this is because some overheads depend on a percentage of the total cost.
     # -----------------------------------------------------------
-    if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
+    if ($leaf->pagename =~ /inventory/)
     {
-        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
-        my $overheads = calculate_overheads($wholesale);
-        $meta->{estimated_overheads1} = $overheads;
-        my $retail = $wholesale + $overheads;
-        $overheads = calculate_overheads($retail);
-        $meta->{estimated_overheads} = $overheads;
-        $meta->{estimated_cost} = $retail;
-        if ($meta->{actual_price})
+        if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
-            $meta->{actual_return} = $meta->{actual_price} - $meta->{actual_overheads};
+            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
+            my $overheads = calculate_overheads($wholesale);
+            $meta->{estimated_overheads1} = $overheads;
+            my $retail = $wholesale + $overheads;
+            $overheads = calculate_overheads($retail);
+            $meta->{estimated_overheads} = $overheads;
+            $meta->{estimated_cost} = $retail;
+            if ($meta->{actual_price})
+            {
+                $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
+                $meta->{actual_return} = $meta->{actual_price} - $meta->{actual_overheads};
+            }
         }
     }
-    if (exists $meta->{postage} and defined $meta->{postage})
+    else # components
+    {
+        # COMPONENTS TOTAL COSTS
+        # Components don't have overheads.
+        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
+        $meta->{estimated_cost} = $wholesale;
+    }
+
+    # POSTAGE - Inventory only
+    if ($leaf->pagename =~ /inventory/ and exists $meta->{postage} and defined $meta->{postage})
     {
         # Note that some of my jewellery is too thick to be able to be sent as a Large Letter,
         # while the really flat pieces are do fit into the Large Letter category.
