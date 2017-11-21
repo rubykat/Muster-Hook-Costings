@@ -93,9 +93,9 @@ sub process {
 
     # -----------------------------------------------------------
     # All these costings are only relevant for craft inventory pages
-    # so skip everything else
+    # or for craft component pages, so skip everything else
     # -----------------------------------------------------------
-    if ($leaf->pagename !~ /inventory/)
+    if ($leaf->pagename !~ /(inventory|components)/)
     {
         return $leaf;
     }
