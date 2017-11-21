@@ -384,8 +384,11 @@ sub process {
     {
         # COMPONENTS TOTAL COSTS
         # Components don't have overheads.
-        my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
-        $meta->{estimated_cost} = $wholesale;
+        if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
+        {
+            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
+            $meta->{estimated_cost} = $wholesale;
+        }
     }
 
     # POSTAGE - Inventory only
