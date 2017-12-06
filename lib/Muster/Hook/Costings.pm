@@ -235,7 +235,7 @@ sub process {
                 {
                     # the cost-per-ring in the chainmaille db is in cents, not dollars
                     my $cref = $self->_do_n_col_query('chainmaille',
-                        "SELECT CostPerRing,Metal FROM rings WHERE Code = '$item->{code}';");
+                        "SELECT CostPerRing,Metal FROM ringsinfo WHERE Code = '$item->{code}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
