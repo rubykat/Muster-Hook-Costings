@@ -122,7 +122,7 @@ sub process {
         {
             my $item = $constr->{$key};
             my $item_mins = 0;
-            if (defined $item->{uses} and $item->{uses} eq 'yarn')
+            if (defined $item->{from} and $item->{from} eq 'yarn')
             {
                 # This is a yarn/stitch related method
 
@@ -150,14 +150,14 @@ sub process {
                     $item_mins=sprintf ("%.0f",$item_mins+.5);
                 }
             }
-            elsif (defined $item->{uses} and $item->{uses} eq 'chainmaille')
+            elsif (defined $item->{from} and $item->{from} eq 'chainmaille')
             {
                 # default time-per-ring is 30 seconds
                 # but it can be overridden for something like, say, Titanium, or experimental weaves
                 my $secs_per_ring = ($item->{secs_per_ring} ? $item->{secs_per_ring} : 30);
                 $item_mins = ($secs_per_ring * $item->{rings}) / 60.0;
             }
-            elsif (defined $item->{uses} and $item->{uses} =~ /resin/i)
+            elsif (defined $item->{from} and $item->{from} =~ /resin/i)
             {
                 # Resin time depends on the number of layers
                 # but the number of minutes per layer may be overridden; by default 30 mins
@@ -212,12 +212,12 @@ sub process {
                     }
                 }
             }
-            elsif ($item->{type})
+            elsif ($item->{from})
             {
-                if ($item->{type} eq 'yarn')
+                if ($item->{from} eq 'yarn')
                 {
                     my $cref = $self->_do_n_col_query('yarn',
-                        "SELECT BallCost,Materials FROM yarn WHERE SourceCode = '$item->{source}' AND Name = '$item->{name}';");
+                        "SELECT BallCost,Materials FROM yarn WHERE SourceCode = '$item->{source}' AND Name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -231,11 +231,11 @@ sub process {
                         }
                     }
                 }
-                elsif ($item->{type} eq 'maille')
+                elsif ($item->{from} eq 'maille')
                 {
                     # the cost-per-ring in the chainmaille db is in cents, not dollars
                     my $cref = $self->_do_n_col_query('chainmaille',
-                        "SELECT CostPerRing,Metal FROM ringsinfo WHERE Code = '$item->{code}';");
+                        "SELECT CostPerRing,Metal FROM ringsinfo WHERE Code = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -243,10 +243,10 @@ sub process {
                         $materials_hash{$row->{Metal}}++;
                     }
                 }
-                elsif ($item->{type} eq 'supplies')
+                elsif ($item->{from} eq 'supplies')
                 {
                     my $cref = $self->_do_n_col_query('supplies',
-                        "SELECT cost,materials,title,tags FROM supplies_info WHERE Name = '$item->{name}';");
+                        "SELECT cost,materials,title,tags FROM supplies_info WHERE Name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
