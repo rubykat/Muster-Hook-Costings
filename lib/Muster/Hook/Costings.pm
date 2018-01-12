@@ -261,6 +261,20 @@ sub process {
                         }
                     }
                 }
+                elsif ($item->{from} eq 'components')
+                {
+                    # the component information is from this current wiki
+                    my $cref = $self->_do_n_col_query('muster',
+                        "SELECT estimated_cost,actual_price FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
+                    if ($cref and $cref->[0])
+                    {
+                        my $row = $cref->[0];
+                        $item_cost = ($row->{actual_price}
+                            ? $row->{actual_price}
+                            : $row->{estimated_cost});
+                        $materials_hash{$key}++;
+                    }
+                }
             }
             else
             {
