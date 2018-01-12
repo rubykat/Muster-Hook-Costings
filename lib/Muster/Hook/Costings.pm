@@ -340,12 +340,6 @@ sub process {
     # * adding the item to Etsy
     # This is in common for all items, no matter what their labour is,
     # so I'm doing this as a separate cost.
-    #
-    # Components:
-    # This also takes labour, but not as much:
-    # * photographing
-    # * naming and tagging the photos
-    # * adding the item to the components
     # -----------------------------------------------------------
     my $itemize_mins = 0;
     if ($leaf->pagename =~ /inventory/)
@@ -355,12 +349,6 @@ sub process {
             : (exists $self->{config}->{itemize_time}
                 ? $self->{config}->{itemize_time}
                 : 20));
-    }
-    else
-    {
-        $itemize_mins = (exists $meta->{itemize_time}
-            ? $meta->{itemize_time}
-                : 10);
     }
     if ($itemize_mins)
     {
