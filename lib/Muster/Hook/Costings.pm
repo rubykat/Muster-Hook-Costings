@@ -360,7 +360,7 @@ sub process {
     {
         $itemize_mins = (exists $meta->{itemize_time}
             ? $meta->{itemize_time}
-                : 15);
+                : 10);
     }
     if ($itemize_mins)
     {
