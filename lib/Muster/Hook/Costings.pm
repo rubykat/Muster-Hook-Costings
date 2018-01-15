@@ -150,7 +150,7 @@ sub process {
                     $item_mins=sprintf ("%.0f",$item_mins+.5);
                 }
             }
-            elsif (defined $item->{from} and ($item->{from} eq 'chainmaille' or $item->{from} eq 'maille'))
+            elsif (defined $item->{from} and $item->{from} eq 'chainmaille')
             {
                 # default time-per-ring is 30 seconds
                 # but it can be overridden for something like, say, Titanium, or experimental weaves
