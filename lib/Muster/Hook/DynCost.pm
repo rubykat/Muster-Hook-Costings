@@ -111,13 +111,30 @@ sub get_function_result {
         if ($leaf->{meta}->{labour_time}
                 or $leaf->{meta}->{materials_cost})
         {
-            my $cost_per_hour = $argvals;
+            my $cost_per_hour = 1;
+            my $retail_multiplier = 1;
+            if ($argvals =~ /,/)
+            {
+                my @av = split(/,/,$argvals);
+                $cost_per_hour = $av[0];
+                $retail_multiplier = $av[1];
+            }
+            else
+            {
+                $cost_per_hour = $argvals;
+                $retail_multiplier = (exists $leaf->{meta}->{retail_multiplier}
+                    ? $leaf->{meta}->{retail_multiplier}
+                    : (exists $self->{config}->{retail_multiplier}
+                        ? $self->{config}->{retail_multiplier}
+                        : 2));
+            }
             my $labour_cost = ($leaf->{meta}->{labour_time} / 60) * $cost_per_hour;
             my $itemize_cost = ($leaf->{meta}->{itemize_time} / 60) * $cost_per_hour;
-            my $wholesale = $leaf->{meta}->{materials_cost} + $labour_cost + $itemize_cost;
-            my $overheads = Muster::Hook::Costings::calculate_overheads($wholesale);
-            my $retail = $wholesale + $overheads;
-            $value = "dyncost($cost_per_hour) = $wholesale + $overheads = $retail";
+            my $cost_without_oh = $leaf->{meta}->{materials_cost} + $labour_cost + $itemize_cost;
+            my $overheads = Muster::Hook::Costings::calculate_overheads($cost_without_oh);
+            my $wholesale = $cost_without_oh + $overheads;
+            my $retail = $wholesale * $retail_multiplier;
+            $value = "dyncost($argvals) = ($cost_without_oh + $overheads = $wholesale) * $retail_multiplier = $retail";
         }
     }
 

@@ -265,13 +265,13 @@ sub process {
                 {
                     # the component information is from this current wiki
                     my $cref = $self->_do_n_col_query('muster',
-                        "SELECT estimated_cost,actual_price FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
+                        "SELECT wholesale_cost,actual_price FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
                         $item_cost = ($row->{actual_price}
                             ? $row->{actual_price}
-                            : $row->{estimated_cost});
+                            : $row->{wholesale_cost});
                         $materials_hash{$key}++;
                     }
                 }
@@ -364,17 +364,23 @@ sub process {
     # Add in the overheads, then re-calculate the total;
     # this is because some overheads depend on a percentage of the total cost.
     # -----------------------------------------------------------
+    my $retail_multiplier = (exists $meta->{retail_multiplier}
+        ? $meta->{retail_multiplier}
+        : (exists $self->{config}->{retail_multiplier}
+            ? $self->{config}->{retail_multiplier}
+            : 2));
     if ($leaf->pagename =~ /inventory/)
     {
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
-            my $overheads = calculate_overheads($wholesale);
+            my $cost_without_oh = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
+            my $overheads = calculate_overheads($cost_without_oh);
             $meta->{estimated_overheads1} = $overheads;
-            my $retail = $wholesale + $overheads;
-            $overheads = calculate_overheads($retail);
+            my $wholesale = $cost_without_oh + $overheads;
+            $overheads = calculate_overheads($wholesale);
             $meta->{estimated_overheads} = $overheads;
-            $meta->{estimated_cost} = $retail;
+            $meta->{wholesale_cost} = $wholesale;
+            $meta->{retail_cost} = $wholesale * $retail_multiplier;
             if ($meta->{actual_price})
             {
                 $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
@@ -389,7 +395,7 @@ sub process {
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
             my $wholesale = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
-            $meta->{estimated_cost} = $wholesale;
+            $meta->{wholesale_cost} = $wholesale;
         }
     }
 
