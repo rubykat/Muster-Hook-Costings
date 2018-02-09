@@ -275,6 +275,7 @@ sub process {
                         if ($row->{labour_time})
                         {
                             $meta->{labour_time} += $row->{labour_time};
+                            $meta->{materials}->{$key}->{labour} = $row->{labour_time};
                         }
                         $item_cost = $row->{materials_cost};
                         $materials_hash{$key}++;
