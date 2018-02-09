@@ -263,15 +263,20 @@ sub process {
                 }
                 elsif ($item->{from} eq 'components')
                 {
-                    # the component information is from this current wiki
+                    # The component information is from this current wiki
+                    # Note we need the labour time and the materials cost, BOTH
+                    # We don't use the wholesale_cost for this, because we need
+                    # to record the *materials* cost for every piece of inventory.
                     my $cref = $self->_do_n_col_query('muster',
-                        "SELECT wholesale_cost,actual_price FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials_cost FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
-                        $item_cost = ($row->{actual_price}
-                            ? $row->{actual_price}
-                            : $row->{wholesale_cost});
+                        if ($row->{labour_time})
+                        {
+                            $meta->{labour_time} += $row->{labour_time};
+                        }
+                        $item_cost = $row->{materials_cost};
                         $materials_hash{$key}++;
                     }
                 }
