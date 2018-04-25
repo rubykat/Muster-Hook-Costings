@@ -126,9 +126,8 @@ sub process {
             {
                 # This is a yarn/stitch related method
 
-                # Do extra calculations for Lucet cord if need be
-                if ($item->{method} eq 'Lucet Cord'
-                        and !$item->{stitches_length}
+                # Calculate stitches_length if need be
+                if (!$item->{stitches_length}
                         and defined $item->{length}
                         and defined $item->{stitches_per})
                 {
