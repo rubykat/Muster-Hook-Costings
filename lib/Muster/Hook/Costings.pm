@@ -276,8 +276,16 @@ sub process {
                         my $row = $cref->[0];
                         if ($row->{labour_time})
                         {
-                            $meta->{labour_time} += $row->{labour_time};
-                            $meta->{materials}->{$key}->{labour} = $row->{labour_time};
+                            my $lt = $row->{labour_time};
+                            # We have to divide the labour time by the "amount"
+                            # of the item, because half an item takes half the time.
+                            if ($item->{amount})
+                            {
+                                $lt = $lt * $item->{amount};
+                            }
+                            
+                            $meta->{labour_time} += $lt;
+                            $meta->{materials}->{$key}->{labour} = $lt;
                         }
                         $item_cost = $row->{materials_cost};
                         $materials_hash{$key}++;
