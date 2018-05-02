@@ -260,14 +260,17 @@ sub process {
                         }
                     }
                 }
-                elsif ($item->{from} eq 'components')
+                elsif ($item->{from} eq 'made_parts'
+                        or $item->{from} eq 'prints')
                 {
+                    my $from = $item->{from};
                     # The component information is from this current wiki
                     # Note we need the labour time and the materials cost, BOTH
                     # We don't use the wholesale_cost for this, because we need
                     # to record the *materials* cost for every piece of inventory.
+                    # And because we need to use a consistent labour cost.
                     my $cref = $self->_do_n_col_query('muster',
-                        "SELECT labour_time,materials_cost FROM flatfields WHERE parent_page = 'craft/components' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials_cost FROM flatfields WHERE parent_page = 'craft/components/${from}' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -405,62 +408,29 @@ sub process {
     }
 
     # POSTAGE - Inventory only
-    if ($leaf->pagename =~ /inventory/ and exists $meta->{postage} and defined $meta->{postage})
+    if ($leaf->pagename =~ /inventory/
+            and exists $meta->{postage}
+            and defined $meta->{postage})
     {
-        # Note that some of my jewellery is too thick to be able to be sent as a Large Letter,
-        # while the really flat pieces are do fit into the Large Letter category.
-        # Postage for a Large Letter up to 250g is $3.00.
-        # Registered post within Australia is an extra $4.00
-        #
-        # Postage within AU for a small-500g parcel is $7.60.
-        # Putting in the prices for Standard parcels because they have tracking, while Economy Air doesn't.
-        # Price as of 2017-11-06
-        # Plus the cost of the packaging.
-        # The very smallest padded bags range from 30c to $2 each - ha!
-        # I'm not sure what size of bag I would need for the larger/heavier items
-        # (apart from Rayvyn's scarf, which barely fits into a size-4 bag)
-        # (but it is interesting, that despite its bulk, it still weighs less than 500g)
-        if ($meta->{postage} eq 'large-letter') # less than 250g, less than 2cm thick
+        # Note that some of my jewellery is too thick to be able to be sent as
+        # a Large Letter, while the really flat pieces do fit into the Large
+        # Letter category.
+
+        # The postage information is from this current wiki,
+        # to make it easier to add new postage profiles.
+        
+        my $cref = $self->_do_n_col_query('muster',
+            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'craft/components/postage' AND name = '$meta->{postage}';");
+        if ($cref and $cref->[0])
         {
-            $meta->{postage_au} = 3.00 + 1;
-            $meta->{postage_nz} = 5.50 + 1;
-            $meta->{postage_us} = 9.00 + 1;
-            $meta->{postage_uk} = 9.00 + 1;
-        }
-        elsif ($meta->{postage} eq 'light') # less than 500g
-        {
-            $meta->{postage_au} = 7.60 + 1;
-            $meta->{postage_nz} = 18.00 + 1;
-            $meta->{postage_us} = 24.00 + 1;
-            $meta->{postage_uk} = 28.50 + 1;
-        }
-        elsif ($meta->{postage} eq 'light-large') # less than 500g, but big size, needs a larger envelope
-        {
-            $meta->{postage_au} = 7.60 + 2;
-            $meta->{postage_nz} = 18.00 + 2;
-            $meta->{postage_us} = 24.00 + 2;
-            $meta->{postage_uk} = 28.50 + 2;
-        }
-        elsif ($meta->{postage} eq 'middling') # up to 1kg
-        {
-            $meta->{postage_au} = 16.65 + 2;
-            $meta->{postage_nz} = 30.50 + 2;
-            $meta->{postage_us} = 41.20 + 2;
-            $meta->{postage_uk} = 43.10 + 2;
-        }
-        elsif ($meta->{postage} eq 'heavy') # up to 1.5 kg
-        {
-            $meta->{postage_au} = 19.80 + 2;
-            $meta->{postage_nz} = 36.10 + 2;
-            $meta->{postage_us} = 52.40 + 2;
-            $meta->{postage_uk} = 54.60 + 2;
-        }
-        elsif ($meta->{postage} eq 'v-heavy') # up to 2kg
-        {
-            $meta->{postage_au} = 19.80 + 2;
-            $meta->{postage_nz} = 41.10 + 2;
-            $meta->{postage_us} = 64.70 + 2;
-            $meta->{postage_uk} = 67.10 + 2;
+            my $row = $cref->[0];
+            if ($row->{packaging})
+            {
+                $meta->{postage_au} = $row->{postage_au} + $row->{packaging};
+                $meta->{postage_nz} = $row->{postage_nz} + $row->{packaging};
+                $meta->{postage_us} = $row->{postage_us} + $row->{packaging};
+                $meta->{postage_uk} = $row->{postage_uk} + $row->{packaging};
+            }
         }
     }
 
