@@ -400,11 +400,11 @@ sub process {
     {
         # COMPONENTS TOTAL COSTS
         # Components don't have overheads.
+        # Nor an itemize_cost; don't want to count the itemize_cost twice;
+        # all that components do is enable me to save time later.
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $wholesale = (defined $meta->{materials_cost} ? $meta->{materials_cost} : 0)
-                + (exists $meta->{labour_cost} and defined $meta->{labour_cost} ? $meta->{labour_cost} : 0)
-                + $meta->{itemize_cost};
+            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
             $meta->{wholesale_cost} = $wholesale;
         }
     }
