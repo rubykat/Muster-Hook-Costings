@@ -199,17 +199,6 @@ sub process {
             if ($item->{cost})
             {
                 $item_cost = $item->{cost};
-                if ($key !~ /findings/i)
-                {
-                    if ($key =~ /Made By Ring/i)
-                    {
-                        $materials_hash{'Anodized Aluminium'}++;
-                    }
-                    else
-                    {
-                        $materials_hash{$key}++;
-                    }
-                }
             }
             elsif ($item->{from})
             {
@@ -297,9 +286,9 @@ sub process {
                     }
                 }
             }
-            else
+            if ($item->{materials})
             {
-                $materials_hash{$key}++;
+                $materials_hash{$item->{materials}}++;
             }
 
             if ($item->{amount})
