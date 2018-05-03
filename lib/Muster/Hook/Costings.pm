@@ -250,14 +250,7 @@ sub process {
                     {
                         my $row = $cref->[0];
                         $item_cost = $row->{cost};
-                        if ($key =~ /resin/i)
-                        {
-                            $materials_hash{'Resin'}++;
-                        }
-                        else
-                        {
-                            $materials_hash{$key}++;
-                        }
+                        $materials_hash{$row->{materials}}++;
                     }
                 }
                 elsif ($item->{from} eq 'made_parts'
@@ -270,7 +263,7 @@ sub process {
                     # to record the *materials* cost for every piece of inventory.
                     # And because we need to use a consistent labour cost.
                     my $cref = $self->_do_n_col_query('muster',
-                        "SELECT labour_time,materials_cost FROM flatfields WHERE parent_page = 'craft/components/${from}' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE parent_page = 'craft/components/${from}' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -288,7 +281,19 @@ sub process {
                             $meta->{materials}->{$key}->{labour} = $lt;
                         }
                         $item_cost = $row->{materials_cost};
-                        $materials_hash{$key}++;
+                        if ($item->{from} eq 'made_parts'
+                                and defined $row->{materials_list})
+                        {
+                            my @mats = split(/, /, $row->{materials_list});
+                            foreach my $m (@mats)
+                            {
+                                $materials_hash{$m}++;
+                            }
+                        }
+                        elsif ($item->{from} eq 'prints')
+                        {
+                            $materials_hash{'paper'}++;
+                        }
                     }
                 }
             }
