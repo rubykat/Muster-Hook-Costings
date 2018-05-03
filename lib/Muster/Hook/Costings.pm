@@ -306,6 +306,7 @@ sub process {
         } # for each item
         $meta->{materials_cost} = $cost;
         $meta->{materials_list} = join(', ', sort keys %materials_hash);
+        $meta->{twice_materials} = $cost * 2; # this is a metric to compare to wholesale cost
     }
     # -----------------------------------------------------------
     # LABOUR COSTS
