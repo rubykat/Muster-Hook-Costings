@@ -300,7 +300,6 @@ sub process {
         } # for each item
         $meta->{materials_cost} = $cost;
         $meta->{materials_list} = join(', ', sort keys %materials_hash);
-        $meta->{twice_materials} = $cost * 2; # this is a metric to compare to wholesale cost
     }
     # -----------------------------------------------------------
     # LABOUR COSTS
@@ -338,6 +337,15 @@ sub process {
         {
             $meta->{used_cost_per_hour} = $per_hour;
             $meta->{labour_cost} = $hours * $per_hour;
+        }
+        
+        # This is a metric to compare to wholesale cost
+        # when the materials cost is higher than the labour cost.
+        if ($defined $meta->{materials_cost}
+                and defined $meta->{labour_cost}
+                and $meta->{materials_cost} > $meta->{labour_cost})
+        {
+            $meta->{twice_materials} = $meta->{materials_cost} * 2;
         }
     }
     # -----------------------------------------------------------
