@@ -341,7 +341,7 @@ sub process {
         
         # This is a metric to compare to wholesale cost
         # when the materials cost is higher than the labour cost.
-        if ($defined $meta->{materials_cost}
+        if (defined $meta->{materials_cost}
                 and defined $meta->{labour_cost}
                 and $meta->{materials_cost} > $meta->{labour_cost})
         {
