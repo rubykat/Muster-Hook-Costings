@@ -159,9 +159,9 @@ sub process {
             elsif (defined $item->{from} and $item->{from} =~ /resin/i)
             {
                 # Resin time depends on the number of layers
-                # but the number of minutes per layer may be overridden; by default 30 mins
+                # but the number of minutes per layer may be overridden; by default 15 mins
                 # This of course does not include curing time.
-                my $mins_per_layer = ($item->{mins_per_layer} ? $item->{mins_per_layer} : 30);
+                my $mins_per_layer = ($item->{mins_per_layer} ? $item->{mins_per_layer} : 15);
                 $item_mins = $mins_per_layer * $item->{layers};
             }
             elsif ($item->{minutes})
