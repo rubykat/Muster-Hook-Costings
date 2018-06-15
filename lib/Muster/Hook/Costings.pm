@@ -348,6 +348,55 @@ sub process {
             $meta->{twice_materials} = $meta->{materials_cost} * 2;
         }
     }
+    # POSTAGE - Inventory only
+    if ($leaf->pagename =~ /inventory/
+            and exists $meta->{postage}
+            and defined $meta->{postage})
+    {
+        # Note that some of my jewellery is too thick to be able to be sent as
+        # a Large Letter, while the really flat pieces do fit into the Large
+        # Letter category.
+
+        # The postage information is from this current wiki,
+        # to make it easier to add new postage profiles.
+
+        my $cref = $self->_do_n_col_query('muster',
+            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'craft/components/postage' AND name = '$meta->{postage}';");
+        if ($cref and $cref->[0])
+        {
+            my $row = $cref->[0];
+            if ($row->{packaging})
+            {
+                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                {
+                    $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
+                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
+                }
+                # If we have free domestic postage, adjust the
+                # prices accordingly, the domestic postage cost
+                # will be added to the item cost, and removed
+                # from the postage costs
+                if ($meta->{free_postage})
+                {
+                    $meta->{free_postage_cost} = $meta->{postage_au};
+                    foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                    {
+                        $meta->{$pkg} -= $meta->{free_postage_cost};
+                    }
+                }
+                else
+                {
+                    $meta->{free_postage_cost} = 0;
+                }
+                # And Etsy are now charging 5% on shipping costs as well!
+                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                {
+                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
+                }
+            }
+        }
+    }
+
     # -----------------------------------------------------------
     # ITEMIZE TIME and ITEMIZE COSTS
     # Inventory:
@@ -392,7 +441,10 @@ sub process {
     {
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $cost_without_oh = $meta->{materials_cost} + $meta->{labour_cost} + $meta->{itemize_cost};
+            my $cost_without_oh = $meta->{materials_cost}
+            + $meta->{labour_cost}
+            + $meta->{itemize_cost}
+            + $meta->{free_postage_cost};
             my $overheads = calculate_overheads($cost_without_oh);
             $meta->{estimated_overheads1} = $overheads;
             my $wholesale = $cost_without_oh + $overheads;
@@ -420,35 +472,6 @@ sub process {
         }
     }
 
-    # POSTAGE - Inventory only
-    if ($leaf->pagename =~ /inventory/
-            and exists $meta->{postage}
-            and defined $meta->{postage})
-    {
-        # Note that some of my jewellery is too thick to be able to be sent as
-        # a Large Letter, while the really flat pieces do fit into the Large
-        # Letter category.
-
-        # The postage information is from this current wiki,
-        # to make it easier to add new postage profiles.
-
-        # And Etsy are now charging 5% on shipping costs as well!
-        
-        my $cref = $self->_do_n_col_query('muster',
-            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'craft/components/postage' AND name = '$meta->{postage}';");
-        if ($cref and $cref->[0])
-        {
-            my $row = $cref->[0];
-            if ($row->{packaging})
-            {
-                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
-                {
-                    $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
-                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
-                }
-            }
-        }
-    }
 
     $leaf->{meta} = $meta;
     return $leaf;
