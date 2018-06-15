@@ -444,7 +444,7 @@ sub process {
                 foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
                 {
                     $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
-                    $meta->{$pkg} += ($meta->{$pkg} * 0.05)
+                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
                 }
             }
         }
@@ -468,7 +468,7 @@ sub calculate_overheads {
     # And things search-rank better if one relists them frequently.
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
     # Etsy transaction fees are now: 5% commission -- and that is on shipping too!
-    my $overheads = ((0.2 / 0.7) * 5) +  0.25 + ($bare_cost * 0.04) + ($bare_cost * 0.05)
+    my $overheads = ((0.2 / 0.7) * 5) +  0.25 + ($bare_cost * 0.04) + ($bare_cost * 0.05);
 
     # Add another $2 for Promoted Listings (at a budget of US$1 per day)
     # (see the money-etsy page for the calculations)
