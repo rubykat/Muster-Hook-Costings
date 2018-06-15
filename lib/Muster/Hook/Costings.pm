@@ -370,7 +370,6 @@ sub process {
                 foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
                 {
                     $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
-                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
                 }
                 # If we have free domestic postage, adjust the
                 # prices accordingly, the domestic postage cost
