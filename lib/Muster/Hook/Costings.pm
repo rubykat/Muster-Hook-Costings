@@ -431,6 +431,8 @@ sub process {
 
         # The postage information is from this current wiki,
         # to make it easier to add new postage profiles.
+
+        # And Etsy are now charging 5% on shipping costs as well!
         
         my $cref = $self->_do_n_col_query('muster',
             "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'craft/components/postage' AND name = '$meta->{postage}';");
@@ -439,10 +441,11 @@ sub process {
             my $row = $cref->[0];
             if ($row->{packaging})
             {
-                $meta->{postage_au} = $row->{postage_au} + $row->{packaging};
-                $meta->{postage_nz} = $row->{postage_nz} + $row->{packaging};
-                $meta->{postage_us} = $row->{postage_us} + $row->{packaging};
-                $meta->{postage_uk} = $row->{postage_uk} + $row->{packaging};
+                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                {
+                    $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
+                    $meta->{$pkg} += ($meta->{$pkg} * 0.05)
+                }
             }
         }
     }
@@ -459,16 +462,13 @@ Calculate overheads like listing fees and COMMISSION (which depends on the total
 sub calculate_overheads {
     my $bare_cost = shift;
 
-    # Etsy listing fees are 20c US per listing per four months.
-    # Etsy promoted listings depend on one's budget.
-    # Etsy transaction fees are: 3.5% commission
+    # Etsy listing fees are 20c US per listing per four months,
+    # so that needs a 0.7 adjustment for currency exchange.
+    # And most things aren't selling within that four months.
+    # And things search-rank better if one relists them frequently.
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
-    # See this thread: https://www.etsy.com/teams/7722/discussions/discuss/18516013/
-    # They reckon that adding 6-7% to the price is a good ballpark figure.
-    # And it's certainly easier to calculate.
-    # Don't forget that with their fees being in US dollars, add in the exchange rate of 0.7 and that comes to a round 10%
-    # So I'll just make it 10%.
-    my $overheads = $bare_cost * 0.10;
+    # Etsy transaction fees are now: 5% commission -- and that is on shipping too!
+    my $overheads = ((0.2 / 0.7) * 5) +  0.25 + ($bare_cost * 0.04) + ($bare_cost * 0.05)
 
     # Add another $2 for Promoted Listings (at a budget of US$1 per day)
     # (see the money-etsy page for the calculations)
