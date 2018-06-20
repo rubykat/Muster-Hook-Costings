@@ -377,11 +377,13 @@ sub process {
                 foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
                 {
                     $meta->{$pkg} = $row->{$pkg};
+                    # we need to remember the actual price which the post office charges
+                    $meta->{"${pkg}_actual"} = $row->{$pkg};
                 }
                 # If we have free domestic postage, adjust the
                 # prices accordingly, the domestic postage cost
                 # will be added to the item cost, and removed
-                # from the postage costs
+                # from the postage charge
                 if ($meta->{free_postage})
                 {
                     $meta->{free_postage_cost} = $meta->{postage_au};
@@ -397,6 +399,7 @@ sub process {
                 # And Etsy are now charging 5% on shipping costs as well!
                 foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
                 {
+                    $meta->{"${pkg}_fees"} = ($meta->{$pkg} * 0.05);
                     $meta->{$pkg} += ($meta->{$pkg} * 0.05);
                 }
             }
