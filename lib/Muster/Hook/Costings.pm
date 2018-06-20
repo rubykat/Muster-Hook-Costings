@@ -367,9 +367,16 @@ sub process {
             my $row = $cref->[0];
             if ($row->{packaging})
             {
+                # Need to add the packaging onto the materials cost of the item
+                # because it is the same no matter what the destination is
+                # and it is 'materials' used in the item-making
+                # and thus needs to be counted for book-keeping.
+                $meta->{materials}->{packaging}->{cost} = $row->{packaging};
+                $meta->{materials_cost} += $row->{packaging};
+                
                 foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
                 {
-                    $meta->{$pkg} = $row->{$pkg} + $row->{packaging};
+                    $meta->{$pkg} = $row->{$pkg};
                 }
                 # If we have free domestic postage, adjust the
                 # prices accordingly, the domestic postage cost
