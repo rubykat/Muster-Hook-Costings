@@ -484,13 +484,12 @@ Calculate overheads like listing fees and COMMISSION (which depends on the total
 sub calculate_overheads {
     my $bare_cost = shift;
 
-    # Etsy listing fees are 20c US per listing per four months,
-    # so that needs a 0.7 adjustment for currency exchange.
-    # And most things aren't selling within that four months.
-    # And things search-rank better if one relists them frequently.
+    my $overheads = ((0.2 / 0.7) # US 20c per listing per four months
+        * 5) # most things are not selling, need to relist more frequently to improve search rank
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
+    +  0.25 + ($bare_cost * 0.04)
     # Etsy transaction fees are now: 5% commission -- and that is on shipping too!
-    my $overheads = ((0.2 / 0.7) * 5) +  0.25 + ($bare_cost * 0.04) + ($bare_cost * 0.05);
+    + ($bare_cost * 0.05);
 
     # Add another $2 for Promoted Listings (at a budget of US$1 per day)
     # (see the money-etsy page for the calculations)
