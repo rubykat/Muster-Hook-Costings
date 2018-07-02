@@ -453,7 +453,7 @@ sub process {
             my $cost_without_oh = $meta->{materials_cost}
             + $meta->{labour_cost}
             + $meta->{itemize_cost}
-            + $meta->{free_postage_cost};
+            + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
             my $overheads = calculate_overheads($cost_without_oh);
             $meta->{estimated_overheads1} = $overheads;
             my $wholesale = $cost_without_oh + $overheads;
@@ -464,7 +464,11 @@ sub process {
             if ($meta->{actual_price})
             {
                 $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
-                $meta->{actual_return} = $meta->{actual_price} - $meta->{actual_overheads};
+                if ($leaf->pagename =~ /sold/)
+                {
+                    $meta->{gross_price} = $meta->{actual_price}
+                    + ($meta->{actual_postage} ? $meta->{actual_postage} : 0);
+                }
             }
         }
     }
