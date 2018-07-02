@@ -251,8 +251,8 @@ sub process {
                     # We don't use the wholesale_cost for this, because we need
                     # to record the *materials* cost for every piece of inventory.
                     # And because we need to use a consistent labour cost.
-                    my $cref = $self->_do_n_col_query('muster',
-                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE parent_page = 'craft/components/${from}' AND name = '$item->{id}';");
+                    my $cref = $self->_do_n_col_query('reference',
+                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE parent_page = 'Craft/components/${from}' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -360,8 +360,8 @@ sub process {
         # The postage information is from this current wiki,
         # to make it easier to add new postage profiles.
 
-        my $cref = $self->_do_n_col_query('muster',
-            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'craft/components/postage' AND name = '$meta->{postage}';");
+        my $cref = $self->_do_n_col_query('reference',
+            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
