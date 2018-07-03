@@ -246,13 +246,22 @@ sub process {
                         or $item->{from} eq 'prints')
                 {
                     my $from = $item->{from};
-                    # The component information is from this current wiki
+
+                    # The component information is from the reference wiki.
+                    # Note that we are looking for a page which starts with
+                    # Craft/components/<section> but it can be anywhere
+                    # underneath; this is because we might be using "seconds"
+                    # or need to put the one-off components into the "used_up"
+                    # section to indicate that they are no longer available
+                    # (since they got used by some given item of inventory --
+                    # this one!)
+                    
                     # Note we need the labour time and the materials cost, BOTH
                     # We don't use the wholesale_cost for this, because we need
                     # to record the *materials* cost for every piece of inventory.
                     # And because we need to use a consistent labour cost.
                     my $cref = $self->_do_n_col_query('reference',
-                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE parent_page = 'Craft/components/${from}' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE page GLOB 'Craft/components/${from}/*' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
