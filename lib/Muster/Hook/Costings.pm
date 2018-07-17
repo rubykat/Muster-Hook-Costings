@@ -124,8 +124,6 @@ sub process {
             my $item_mins = 0;
             if (defined $item->{from} and $item->{from} eq 'yarn')
             {
-                # This is a yarn/stitch related method
-
                 # Calculate stitches_length if need be
                 if (!$item->{stitches_length}
                         and defined $item->{length}
@@ -134,15 +132,15 @@ sub process {
                     $item->{stitches_length} = ($item->{stitches_per}->{stitches} / $item->{stitches_per}->{length}) * $item->{length};
                 }
 
-                # Look in the yarn database
-                my $cref = $self->_do_n_col_query('yarn',
-                    "SELECT Minutes,StitchesWide,StitchesLong FROM metrics WHERE Method = '$item->{method}';");
+                # Look in the reference database for metrics
+                my $cref = $self->_do_n_col_query('reference',
+                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND title = '$item->{method}';");
                 if ($cref and $cref->[0])
                 {
                     my $row = $cref->[0];
-                    my $minutes = $row->{Minutes};
-                    my $wide = $row->{StitchesWide};
-                    my $long = $row->{StitchesLong};
+                    my $minutes = $row->{minutes};
+                    my $wide = $row->{width};
+                    my $long = $row->{length};
 
                     $item_mins = ((($item->{stitches_width} * $item->{stitches_length}) / ($wide * $long)) * $minutes);
                     # round them
