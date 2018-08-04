@@ -432,7 +432,7 @@ sub process {
             ? $meta->{itemize_time}
             : (exists $self->{config}->{itemize_time}
                 ? $self->{config}->{itemize_time}
-                : 20));
+                : 15));
     }
     if ($itemize_mins)
     {
