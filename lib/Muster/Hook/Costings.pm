@@ -354,14 +354,6 @@ sub process {
         {
             $meta->{twice_materials} = $meta->{materials_cost} * 2;
         }
-        # Also good to check the three-times-materials as another metric
-        # to compare to prevent underpricing
-        if (defined $meta->{materials_cost}
-                and defined $meta->{labour_cost}
-                and ($meta->{materials_cost} + $meta->{labour_cost}) < ($meta->{materials_cost} * 3))
-        {
-            $meta->{thrice_materials} = $meta->{materials_cost} * 3;
-        }
     }
     # POSTAGE - Inventory only
     if ($leaf->pagename =~ /inventory/
@@ -484,6 +476,12 @@ sub process {
                     $meta->{gross_price} = $meta->{actual_price}
                     + ($meta->{actual_postage} ? $meta->{actual_postage} : 0);
                 }
+            }
+            # Also good to check the three-times-materials as another metric
+            # to compare to prevent underpricing
+            if ($meta->{wholesale_cost} < ($meta->{materials_cost} * 3))
+            {
+                $meta->{thrice_materials} = $meta->{materials_cost} * 3;
             }
         }
     }
