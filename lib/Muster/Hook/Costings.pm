@@ -160,7 +160,7 @@ sub process {
 
                 # Look in the reference database for metrics
                 my $cref = $self->_do_n_col_query('reference',
-                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND title = '$item->{method}';");
+                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND (title = '$item->{method}' OR name = '$item->{method}');");
                 if ($cref and $cref->[0])
                 {
                     my $row = $cref->[0];
