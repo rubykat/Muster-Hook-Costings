@@ -185,6 +185,10 @@ sub process {
                     # round them
                     $item_mins=sprintf ("%.0f",$item_mins+.5);
                 }
+                else
+                {
+                    warn "construction from metrics, failed to find '$item->{method}'";
+                }
             }
             elsif (defined $item->{from} and $item->{from} eq 'chainmaille')
             {
