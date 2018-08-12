@@ -634,10 +634,15 @@ sub _do_n_col_query {
     if ($q !~ /^SELECT /)
     {
         # bad boy! Not a SELECT.
+        warn "NOT A SELECT";
         return undef;
     }
     my $dbh = $self->{databases}->{$dbname};
-    return undef if !$dbh;
+    if (!$dbh)
+    {
+        warn "database $dbname NOT FOUND";
+        return undef;
+    }
 
     my $sth = $dbh->prepare($q);
     if (!$sth)
