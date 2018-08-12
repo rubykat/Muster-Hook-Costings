@@ -149,6 +149,7 @@ sub process {
             }
             elsif (defined $item->{from} and $item->{from} eq 'metrics')
             {
+                say "item from metrics, method=$item->{method}";
                 # Calculate stitches_length if need be
                 if (!$item->{stitches_length}
                         and defined $item->{length}
@@ -167,7 +168,7 @@ sub process {
                     my $wide = $row->{width};
                     my $long = $row->{length};
 
-                    say "item from metrics, method=$item->{method}, minutes=$minutes";
+                    say "item from metrics, minutes=$minutes";
 
                     if ($wide and $long and $item->{stitches_width} and $item->{stitches_length})
                     {
