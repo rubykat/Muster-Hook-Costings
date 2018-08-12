@@ -194,14 +194,6 @@ sub process {
                 my $secs_per_ring = ($item->{secs_per_ring} ? $item->{secs_per_ring} : 30);
                 $item_mins = ($secs_per_ring * $item->{rings}) / 60.0;
             }
-            elsif (defined $item->{from} and $item->{from} =~ /resin/i)
-            {
-                # Resin time depends on the number of layers
-                # but the number of minutes per layer may be overridden; by default 15 mins
-                # This of course does not include curing time.
-                my $mins_per_layer = ($item->{mins_per_layer} ? $item->{mins_per_layer} : 15);
-                $item_mins = $mins_per_layer * $item->{layers};
-            }
             elsif ($item->{minutes})
             {
                 # generic task override, just say how many minutes it took
@@ -211,6 +203,10 @@ sub process {
                 # talking about repeated actions. For example, wire-wrapping the
                 # ends of six cords, the amount would be six.
                 $item_mins = $item_mins * $item->{amount} if $item->{amount};
+            }
+            else
+            {
+                warn "unknown construction method $item->{from}";
             }
             $meta->{construction}->{$key}->{minutes} = $item_mins;
             $labour += $item_mins;
