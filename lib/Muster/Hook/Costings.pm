@@ -167,6 +167,8 @@ sub process {
                     my $wide = $row->{width};
                     my $long = $row->{length};
 
+                    say "item from metrics, method=$item->{method}, minutes=$minutes";
+
                     if ($wide and $long and $item->{stitches_width} and $item->{stitches_length})
                     {
                         $item_mins = ((($item->{stitches_width} * $item->{stitches_length}) / ($wide * $long)) * $minutes);
