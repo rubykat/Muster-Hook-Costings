@@ -630,6 +630,7 @@ sub _do_n_col_query {
     my $dbname = shift;
     my $q = shift;
 
+    warn "query: '$q'";
     if ($q !~ /^SELECT /)
     {
         # bad boy! Not a SELECT.
