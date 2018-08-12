@@ -147,6 +147,42 @@ sub process {
                     $item_mins=sprintf ("%.0f",$item_mins+.5);
                 }
             }
+            elsif (defined $item->{from} and $item->{from} eq 'metrics')
+            {
+                # Calculate stitches_length if need be
+                if (!$item->{stitches_length}
+                        and defined $item->{length}
+                        and defined $item->{stitches_per})
+                {
+                    $item->{stitches_length} = ($item->{stitches_per}->{stitches} / $item->{stitches_per}->{length}) * $item->{length};
+                }
+
+                # Look in the reference database for metrics
+                my $cref = $self->_do_n_col_query('reference',
+                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND title = '$item->{method}';");
+                if ($cref and $cref->[0])
+                {
+                    my $row = $cref->[0];
+                    my $minutes = $row->{minutes};
+                    my $wide = $row->{width};
+                    my $long = $row->{length};
+
+                    if ($wide and $long and $item->{stitches_width} and $item->{stitches_length})
+                    {
+                        $item_mins = ((($item->{stitches_width} * $item->{stitches_length}) / ($wide * $long)) * $minutes);
+                    }
+                    elsif ($item->{count}) # There is a single multiplier
+                    {
+                        $item_mins = $item->{count} * $minutes;
+                    }
+                    else # there is no multiplier, it is a set time
+                    {
+                        $item_mins = $minutes;
+                    }
+                    # round them
+                    $item_mins=sprintf ("%.0f",$item_mins+.5);
+                }
+            }
             elsif (defined $item->{from} and $item->{from} eq 'chainmaille')
             {
                 # default time-per-ring is 30 seconds
