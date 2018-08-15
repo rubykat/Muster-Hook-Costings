@@ -509,13 +509,14 @@ sub process {
             + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
             my $cost_all_labour = $meta->{labour_cost} + $meta->{itemize_cost};
             my $overheads = calculate_overheads($cost_all_materials + $cost_all_labour);
+            my $overheads2 = calculate_overheads($cost_all_materials + $cost_all_labour + $overheads);
 
             # -----------------------------------------------------------
             ## Here is where we figure the prices with different formulas.
             my @formula = ();
             push @formula, {
                 desc => 'materials + labour + overheads',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads),
+                cost => ($cost_all_materials + $cost_all_labour + $overheads2),
             };
             push @formula, {
                 desc => 'materials * 2.2 * 2',
@@ -523,11 +524,11 @@ sub process {
             };
             push @formula , {
                 desc => '(materials + labour + overheads) + (materials * 3)',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads + ($meta->{materials_cost}  * 3)),
+                cost => ($cost_all_materials + $cost_all_labour + $overheads2 + ($meta->{materials_cost}  * 3)),
             };
             push @formula , {
                 desc => '(materials + labour + overheads) + (materials * 4)',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads + ($meta->{materials_cost}  * 4)),
+                cost => ($cost_all_materials + $cost_all_labour + $overheads2 + ($meta->{materials_cost}  * 4)),
             };
             push @formula, {
                 desc => '(materials + labour + overheads) * 2',
@@ -548,7 +549,8 @@ sub process {
 
             if (@mkt_prices)
             {
-                if (defined $meta->{price_class} and $meta->{price_class} eq 'bargain')
+                if (defined $meta->{price_class} 
+                        and $meta->{price_class} eq 'bargain')
                 {
                     $meta->{suggested_price} = $sformula[0]->{cost};
                     $meta->{price_formula} = $sformula[0]->{desc};
@@ -563,7 +565,8 @@ sub process {
                         $meta->{price_formula} = "market bargain class";
                     }
                 }
-                elsif (defined $meta->{price_class} and $meta->{price_class} eq 'premium')
+                elsif (defined $meta->{price_class}
+                        and $meta->{price_class} eq 'premium')
                 {
                     $meta->{suggested_price} = $sformula[$#sformula]->{cost};
                     $meta->{price_formula} = $sformula[$#sformula]->{desc};
@@ -576,6 +579,36 @@ sub process {
                     {
                         $meta->{suggested_price} = $sformula[$#sformula - 1]->{cost};
                         $meta->{price_formula} = $sformula[$#sformula - 1]->{desc};
+                    }
+                }
+                elsif (defined $meta->{price_class}
+                        and $meta->{price_class} eq 'low-premium')
+                {
+                    # higher than midrange, but not much higher
+                    $meta->{suggested_price} = $sformula[0]->{cost};
+                    $meta->{price_formula} = $sformula[0]->{desc};
+                    my $i = 1;
+                    while ($meta->{suggested_price} < $mkt_prices[2]
+                            and $i <= $#sformula)
+                    {
+                        $meta->{suggested_price} = $sformula[$i]->{cost};
+                        $meta->{price_formula} = $sformula[$i]->{desc};
+                        $i++;
+                    }
+                }
+                elsif (defined $meta->{price_class}
+                        and $meta->{price_class} eq 'low-midrange')
+                {
+                    # higher than bargain, but not much higher
+                    $meta->{suggested_price} = $sformula[0]->{cost};
+                    $meta->{price_formula} = $sformula[0]->{desc};
+                    my $i = 1;
+                    while ($meta->{suggested_price} < $mkt_prices[1]
+                            and $i <= $#sformula)
+                    {
+                        $meta->{suggested_price} = $sformula[$i]->{cost};
+                        $meta->{price_formula} = $sformula[$i]->{desc};
+                        $i++;
                     }
                 }
                 else # midrange
