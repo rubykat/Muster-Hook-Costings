@@ -592,8 +592,7 @@ sub process {
                     }
                     if ($meta->{suggested_price} > $mkt_prices[1]) # too pricey for bargain
                     {
-                        $meta->{suggested_price} = $mkt_prices[1];
-                        $meta->{price_formula} = "market bargain class";
+                        $meta->{price_class} = 'low-midrange';
                     }
                 }
                 elsif (defined $meta->{price_class}
@@ -603,8 +602,7 @@ sub process {
                     $meta->{price_formula} = $sformula[$#sformula]->{desc};
                     if ($meta->{suggested_price} < $mkt_prices[2]) # not costly enough
                     {
-                        $meta->{suggested_price} = $mkt_prices[2];
-                        $meta->{price_formula} = "market premium class";
+                        $meta->{price_class} = 'midrange';
                     }
                     if ($meta->{suggested_price} > $mkt_prices[3]) # too costly
                     {
@@ -658,11 +656,11 @@ sub process {
                     }
                     if ($meta->{suggested_price} > $mkt_prices[2]) # still too costly
                     {
-                        $meta->{price_class} = 'premium';
+                        $meta->{price_class} = 'low-premium';
                     }
-                    if ($meta->{suggested_price} < $mkt_prices[1]) # still less
+                    if ($meta->{suggested_price} < $mkt_prices[1]) # less than midrange
                     {
-                        $meta->{price_class} = 'bargain'; # this is a bargain!
+                        $meta->{price_class} = 'bargain';
                     }
                 }
             }
