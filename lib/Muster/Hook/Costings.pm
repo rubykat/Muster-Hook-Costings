@@ -509,34 +509,51 @@ sub process {
             + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
             my $cost_all_labour = $meta->{labour_cost} + $meta->{itemize_cost};
             my $overheads = calculate_overheads($cost_all_materials + $cost_all_labour);
-            my $overheads2 = calculate_overheads($cost_all_materials + $cost_all_labour + $overheads);
 
             # -----------------------------------------------------------
             ## Here is where we figure the prices with different formulas.
             my @formula = ();
+            my $base_cost = $cost_all_materials + $cost_all_labour;
+            my $oh1 = calculate_overheads($base_cost);
+            my $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula, {
                 desc => 'materials + labour + overheads',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads2),
+                cost => ($base_cost + $oh2),
             };
+            $base_cost = $cost_all_materials * 2.25 * 2;
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula, {
-                desc => 'materials * 2.2 * 2',
-                cost => (($cost_all_materials * 2.2) * 2),
+                desc => '(materials * 2.25 * 2) + overheads',
+                cost => ($base_cost + $oh2),
             };
+            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 3);
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula , {
-                desc => '(materials + labour + overheads) + (materials * 3)',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads2 + ($meta->{materials_cost}  * 3)),
+                desc => 'materials + labour + (materials * 3) + overheads',
+                cost => ($base_cost + $oh2),
             };
+            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 4);
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula , {
-                desc => '(materials + labour + overheads) + (materials * 4)',
-                cost => ($cost_all_materials + $cost_all_labour + $overheads2 + ($meta->{materials_cost}  * 4)),
+                desc => 'materials + labour + (materials * 4) + overheads',
+                cost => ($base_cost + $oh2),
             };
+            $base_cost = ($cost_all_materials + $cost_all_labour) * 2;
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula, {
-                desc => '(materials + labour + overheads) * 2',
-                cost => (($cost_all_materials + $cost_all_labour + $overheads) * 2),
+                desc => '((materials + labour) * 2) + overheads',
+                cost => ($base_cost + $oh2),
             };
+            $base_cost = ($cost_all_materials + $cost_all_labour) * 2 * 1.5;
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
             push @formula, {
-                desc => '(materials + labour + overheads) * 2 * 2',
-                cost => (($cost_all_materials + $cost_all_labour + $overheads) * 2 * 2),
+                desc => '((materials + labour) * 2 * 1.5) + overheads',
+                cost => ($base_cost + $oh2),
             };
 
             # sort the formula costs
@@ -627,11 +644,11 @@ sub process {
                     }
                     if ($meta->{suggested_price} > $mkt_prices[2]) # still too costly
                     {
-                        $meta->{price_formula} = 'premium';
+                        $meta->{price_class} = 'premium';
                     }
                     if ($meta->{suggested_price} < $mkt_prices[1]) # still less
                     {
-                        $meta->{price_formula} = 'bargain'; # this is a bargain!
+                        $meta->{price_class} = 'bargain'; # this is a bargain!
                     }
                 }
             }
