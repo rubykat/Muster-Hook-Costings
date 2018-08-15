@@ -520,11 +520,25 @@ sub process {
                 desc => 'materials + labour + overheads',
                 cost => ($base_cost + $oh2),
             };
-            $base_cost = $cost_all_materials * 2.25 * 2;
+            $base_cost = ($cost_all_labour * 0.5) + ($cost_all_materials * 4);
             $oh1 = calculate_overheads($base_cost);
             $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula, {
-                desc => '(materials * 2.25 * 2) + overheads',
+            push @formula , {
+                desc => '(labour * 0.5) + (materials * 4) + overheads',
+                cost => ($base_cost + $oh2),
+            };
+            $base_cost = $cost_all_labour + ($meta->{materials_cost} * 2);
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
+            push @formula , {
+                desc => 'labour + (materials * 2) + overheads',
+                cost => ($base_cost + $oh2),
+            };
+            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 2);
+            $oh1 = calculate_overheads($base_cost);
+            $oh2 = calculate_overheads($base_cost + $oh1);
+            push @formula , {
+                desc => 'materials + labour + (materials * 2) + overheads',
                 cost => ($base_cost + $oh2),
             };
             $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 3);
