@@ -382,14 +382,6 @@ sub process {
             $meta->{labour_cost} = $hours * $per_hour;
         }
         
-        # This is a metric to compare to wholesale cost
-        # when the materials cost is higher than the labour cost.
-        if (defined $meta->{materials_cost}
-                and defined $meta->{labour_cost}
-                and $meta->{materials_cost} > $meta->{labour_cost})
-        {
-            $meta->{twice_materials} = $meta->{materials_cost} * 2;
-        }
     }
     # POSTAGE - Inventory only
     if ($leaf->pagename =~ /inventory/
@@ -479,31 +471,146 @@ sub process {
     }
 
     # -----------------------------------------------------------
+    # Market prices
+    # Trying this to get a better idea of how to tweak prices
+    # The class of item is the first part of the name.
+    # mkt_prices[0] - bargain-bottom
+    # mkt_prices[1] - bargain-top and midrange-bottom
+    # mkt_prices[2] - midrange-top and premium-bottom
+    # mkt_prices[3] - premium-top
+    # -----------------------------------------------------------
+    my $item_class = $meta->{p1};
+    my @mkt_prices = ();
+    if ($item_class)
+    {
+        my $cref = $self->_do_n_col_query('reference',
+            "SELECT prices FROM flatfields WHERE page GLOB 'Craft/market/*' AND name = '$item_class';");
+        if ($cref and $cref->[0])
+        {
+            my $row = $cref->[0];
+            @mkt_prices = split(/[|]/, $row->{prices});
+        }
+    }
+
+    # -----------------------------------------------------------
     # INVENTORY TOTAL COSTS AND OVERHEADS
     # Calculate total costs from previously derived costs
     # Add in the overheads, then re-calculate the total;
     # this is because some overheads depend on a percentage of the total cost.
+    #
+    # There is more than one kind of formula that can be used;
+    # we need to use the best formula we can.
     # -----------------------------------------------------------
-    my $retail_multiplier = (exists $meta->{retail_multiplier}
-        ? $meta->{retail_multiplier}
-        : (exists $self->{config}->{retail_multiplier}
-            ? $self->{config}->{retail_multiplier}
-            : 2));
     if ($leaf->pagename =~ /inventory/)
     {
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $cost_without_oh = $meta->{materials_cost}
-            + $meta->{labour_cost}
-            + $meta->{itemize_cost}
+            my $cost_all_materials = $meta->{materials_cost}
             + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
-            my $overheads = calculate_overheads($cost_without_oh);
-            $meta->{estimated_overheads1} = $overheads;
-            my $wholesale = $cost_without_oh + $overheads;
-            $overheads = calculate_overheads($wholesale);
-            $meta->{estimated_overheads} = $overheads;
-            $meta->{wholesale_cost} = $wholesale;
-            $meta->{retail_cost} = $wholesale * $retail_multiplier;
+            my $cost_all_labour = $meta->{labour_cost} + $meta->{itemize_cost};
+            my $overheads = calculate_overheads($cost_all_materials + $cost_all_labour);
+
+            # -----------------------------------------------------------
+            ## Here is where we figure the prices with different formulas.
+            my @formula = ();
+            push @formula, {
+                desc => 'materials + labour + overheads',
+                cost => ($cost_all_materials + $cost_all_labour + $overheads),
+            };
+            push @formula, {
+                desc => 'materials * 2.2 * 2',
+                cost => (($cost_all_materials * 2.2) * 2),
+            };
+            push @formula , {
+                desc => '(materials + labour + overheads) + (materials * 3)',
+                cost => ($cost_all_materials + $cost_all_labour + $overheads + ($meta->{materials_cost}  * 3)),
+            };
+            push @formula , {
+                desc => '(materials + labour + overheads) + (materials * 4)',
+                cost => ($cost_all_materials + $cost_all_labour + $overheads + ($meta->{materials_cost}  * 4)),
+            };
+            push @formula, {
+                desc => '(materials + labour + overheads) * 2',
+                cost => (($cost_all_materials + $cost_all_labour + $overheads) * 2),
+            };
+            push @formula, {
+                desc => '(materials + labour + overheads) * 2 * 2',
+                cost => (($cost_all_materials + $cost_all_labour + $overheads) * 2 * 2),
+            };
+
+            # sort the formula costs
+            my @sformula = sort {$a->{cost} <=> $b->{cost}} @formula;
+            for (my $i = 0; $i <= $#sformula; $i++)
+            {
+                $meta->{"formula${i}"}->{cost} = $sformula[$i]->{cost};
+                $meta->{"formula${i}"}->{desc} = $sformula[$i]->{desc};
+            }
+
+            if (@mkt_prices)
+            {
+                if (defined $meta->{price_class} and $meta->{price_class} eq 'bargain')
+                {
+                    $meta->{suggested_price} = $sformula[0]->{cost};
+                    $meta->{price_formula} = $sformula[0]->{desc};
+                    if ($meta->{suggested_price} < $mkt_prices[0])
+                    {
+                        $meta->{suggested_price} = $sformula[1]->{cost};
+                        $meta->{price_formula} = $sformula[1]->{desc};
+                    }
+                    if ($meta->{suggested_price} > $mkt_prices[1]) # too pricey for bargain
+                    {
+                        $meta->{suggested_price} = $mkt_prices[1];
+                        $meta->{price_formula} = "market bargain class";
+                    }
+                }
+                elsif (defined $meta->{price_class} and $meta->{price_class} eq 'premium')
+                {
+                    $meta->{suggested_price} = $sformula[$#sformula]->{cost};
+                    $meta->{price_formula} = $sformula[$#sformula]->{desc};
+                    if ($meta->{suggested_price} < $mkt_prices[2]) # not costly enough
+                    {
+                        $meta->{suggested_price} = $mkt_prices[2];
+                        $meta->{price_formula} = "market premium class";
+                    }
+                    if ($meta->{suggested_price} > $mkt_prices[3]) # too costly
+                    {
+                        $meta->{suggested_price} = $sformula[$#sformula - 1]->{cost};
+                        $meta->{price_formula} = $sformula[$#sformula - 1]->{desc};
+                    }
+                }
+                else # midrange
+                {
+                    $meta->{price_class} = 'midrange';
+                    $meta->{suggested_price} = $sformula[$#sformula]->{cost};
+                    $meta->{price_formula} = $sformula[$#sformula]->{desc};
+                    # while too costly for midrange, change formula
+                    my $i = $#sformula - 1;
+                    while ($meta->{suggested_price} > $mkt_prices[2]
+                            and $i >= 0)
+                    {
+                        $meta->{suggested_price} = $sformula[$i]->{cost};
+                        $meta->{price_formula} = $sformula[$i]->{desc};
+                        $i--;
+                    }
+                    if ($meta->{suggested_price} > $mkt_prices[2]) # still too costly
+                    {
+                        $meta->{price_formula} = 'premium';
+                    }
+                    if ($meta->{suggested_price} < $mkt_prices[1]) # still less
+                    {
+                        $meta->{price_formula} = 'bargain'; # this is a bargain!
+                    }
+                }
+            }
+            else # no market info
+            {
+                $meta->{suggested_price} = $sformula[2]->{cost};
+                $meta->{price_formula} = $sformula[2]->{desc};
+            }
+            $meta->{estimated_overheads} = calculate_overheads($meta->{suggested_price});
+
+            # -----------------------------------------------------------
+            # This is the actual price set by the human being
             if ($meta->{actual_price})
             {
                 $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
@@ -512,12 +619,6 @@ sub process {
                     $meta->{gross_price} = $meta->{actual_price}
                     + ($meta->{actual_postage} ? $meta->{actual_postage} : 0);
                 }
-            }
-            # Also good to check the three-times-materials as another metric
-            # to compare to prevent underpricing
-            if ($meta->{wholesale_cost} < ($meta->{materials_cost} * 3))
-            {
-                $meta->{thrice_materials} = $meta->{materials_cost} * 3;
             }
         }
     }
