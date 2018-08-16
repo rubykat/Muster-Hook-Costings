@@ -668,8 +668,8 @@ sub process {
             }
             else # no market info
             {
-                $meta->{suggested_price} = $sformula[2]->{cost};
-                $meta->{price_formula} = $sformula[2]->{desc};
+                $meta->{suggested_price} = $sformula[1]->{cost};
+                $meta->{price_formula} = $sformula[1]->{desc};
             }
             $meta->{estimated_overheads} = calculate_overheads($meta->{suggested_price});
 
