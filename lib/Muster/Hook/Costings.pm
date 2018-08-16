@@ -473,13 +473,14 @@ sub process {
     # -----------------------------------------------------------
     # Market prices
     # Trying this to get a better idea of how to tweak prices
-    # The class of item is the first part of the name.
+    # The class of item is the first part of the name if there isn't
+    # a specific item_class given.
     # mkt_prices[0] - bargain-bottom
     # mkt_prices[1] - bargain-top and midrange-bottom
     # mkt_prices[2] - midrange-top and premium-bottom
     # mkt_prices[3] - premium-top
     # -----------------------------------------------------------
-    my $item_class = $meta->{p1};
+    my $item_class = (exists $meta->{item_class} and defined $meta->{item_class} ? $meta->{item_class} : $meta->{p1});
     my @mkt_prices = ();
     if ($item_class)
     {
