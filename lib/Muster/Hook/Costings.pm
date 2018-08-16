@@ -480,7 +480,8 @@ sub process {
     # mkt_prices[2] - midrange-top and premium-bottom
     # mkt_prices[3] - premium-top
     # -----------------------------------------------------------
-    my $item_class = (exists $meta->{item_class} and defined $meta->{item_class} ? $meta->{item_class} : $meta->{p1});
+    my $item_class = ($meta->{item_class} ? $meta->{item_class} : $meta->{p1});
+    $meta->{item_class} = $item_class;
     my @mkt_prices = ();
     if ($item_class)
     {
