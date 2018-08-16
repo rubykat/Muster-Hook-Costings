@@ -666,10 +666,10 @@ sub process {
                     }
                 }
             }
-            else # no market info
+            else # no market info, use default formula
             {
-                $meta->{suggested_price} = $sformula[1]->{cost};
-                $meta->{price_formula} = $sformula[1]->{desc};
+                $meta->{suggested_price} = $formula[0]->{cost};
+                $meta->{price_formula} = $formula[0]->{desc};
             }
             $meta->{estimated_overheads} = calculate_overheads($meta->{suggested_price});
 
