@@ -396,12 +396,13 @@ sub process {
         # to make it easier to add new postage profiles.
 
         my $cref = $self->_do_n_col_query('reference',
-            "SELECT packaging,postage_au,postage_nz,postage_us,postage_uk FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
+            "SELECT packaging,postage FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
             if ($row->{packaging})
             {
+                my $post = Load($row->{postage});
                 # Need to add the packaging onto the materials cost of the item
                 # because it is the same no matter what the destination is
                 # and it is 'materials' used in the item-making
@@ -409,11 +410,12 @@ sub process {
                 $meta->{materials}->{packaging}->{cost} = $row->{packaging};
                 $meta->{materials_cost} += $row->{packaging};
                 
-                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                $meta->{postage_cost} = {};
+                foreach my $country (keys %{$post})
                 {
-                    $meta->{$pkg} = $row->{$pkg};
+                    $meta->{postage_cost}->{$country} = $post->{$country};
                     # we need to remember the actual price which the post office charges
-                    $meta->{"${pkg}_actual"} = $row->{$pkg};
+                    $meta->{postage_cost}->{"${country}_actual"} = $post->{$country};
                 }
                 # If we have free domestic postage, adjust the
                 # prices accordingly, the domestic postage cost
@@ -421,10 +423,10 @@ sub process {
                 # from the postage charge
                 if ($meta->{free_postage})
                 {
-                    $meta->{free_postage_cost} = $meta->{postage_au};
-                    foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                    $meta->{free_postage_cost} = $meta->{postage_cost}->{au};
+                    foreach my $country (keys %{$post})
                     {
-                        $meta->{$pkg} -= $meta->{free_postage_cost};
+                        $meta->{postage_cost}->{$country} -= $meta->{free_postage_cost};
                     }
                 }
                 else
@@ -432,10 +434,10 @@ sub process {
                     $meta->{free_postage_cost} = 0;
                 }
                 # And Etsy are now charging 5% on shipping costs as well!
-                foreach my $pkg (qw(postage_au postage_nz postage_us postage_uk))
+                foreach my $country (keys %{$post})
                 {
-                    $meta->{"${pkg}_fees"} = ($meta->{$pkg} * 0.05);
-                    $meta->{$pkg} += ($meta->{$pkg} * 0.05);
+                    $meta->{postage_cost}->{"${country}_fees"} = ($post->{$country} * 0.05);
+                    $meta->{postage_cost}->{$country} += ($post->{$country} * 0.05);
                 }
             }
         }
