@@ -506,31 +506,8 @@ sub process {
             # --------------------------------------------------------
             if (@mkt_prices)
             {
-                if ($meta->{retail_price} < $mkt_prices[0])
-                {
-                    # increase the market price to the minimum price
-                    # (this is very unlikely to be needed)
-                    $meta->{price_class} = 'bargain';
-                    $meta->{retail_price} = $mkt_prices[0];
-                }
-                elsif ($meta->{retail_price}  <= $mkt_prices[1])
-                {
-                    $meta->{price_class} = 'bargain';
-                }
-                elsif ($meta->{retail_price}  > $mkt_prices[1]
-                        and $meta->{retail_price} <= $mkt_prices[2])
-                {
-                    $meta->{price_class} = 'midrange';
-                }
-                elsif ($meta->{retail_price}  > $mkt_prices[2]
-                        and $meta->{retail_price} <= $mkt_prices[3])
-                {
-                    $meta->{price_class} = 'premium';
-                }
-                else
-                {
-                    $meta->{price_class} = 'OVERPRICED';
-                }
+                $meta->{price_class} = _market_class(\@mkt_prices,
+                    $meta->{retail_price});
             }
 
             # -----------------------------------------------------------
@@ -540,6 +517,12 @@ sub process {
                 my $fh = calculate_fees($meta->{actual_price});
                 $meta->{actual_fees} = $fh->{total};
                 $meta->{fees_breakdown} = $fh; # this replaces estimated fees
+                $meta->{actual_cost_price} = $meta->{materials_cost} + $meta->{actual_fees};
+                if (@mkt_prices)
+                {
+                    $meta->{actual_price_class} = _market_class(\@mkt_prices,
+                        $meta->{actual_price});
+                }
                 if ($leaf->pagename =~ /sold/)
                 {
                     $meta->{gross_price} = $meta->{actual_price}
@@ -605,6 +588,44 @@ sub calculate_fees {
 
     return $feesb;
 } # calculate_fees
+
+=head2 _market_class
+
+Figure out the market class of this item
+
+=cut
+sub _market_class {
+    my $mkt_prices = shift;
+    my $price = shift;
+
+    my $price_class = '';
+    if (@{$mkt_prices})
+    {
+        if ($price < $mkt_prices->[0])
+        {
+            $price_class = 'below-bargain';
+        }
+        elsif ($price  <= $mkt_prices->[1])
+        {
+            $price_class = 'bargain';
+        }
+        elsif ($price  > $mkt_prices->[1]
+                and $price <= $mkt_prices->[2])
+        {
+            $price_class = 'midrange';
+        }
+        elsif ($price  > $mkt_prices->[2]
+                and $price <= $mkt_prices->[3])
+        {
+            $price_class = 'premium';
+        }
+        else
+        {
+            $price_class = 'OVERPRICED';
+        }
+    }
+    return $price_class;
+} #_market_class
 
 =head2 _do_one_col_query
 
