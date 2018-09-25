@@ -392,7 +392,7 @@ sub process {
         # a Large Letter, while the really flat pieces do fit into the Large
         # Letter category.
 
-        # The postage information is from this current wiki,
+        # The postage information is from the reference wiki,
         # to make it easier to add new postage profiles.
 
         my $cref = $self->_do_n_col_query('reference',
@@ -413,9 +413,9 @@ sub process {
                 $meta->{postage_cost} = {};
                 foreach my $country (keys %{$post})
                 {
-                    $meta->{postage_cost}->{$country} = $post->{$country};
+                    $meta->{postage_cost}->{$country}->{cost} = $post->{$country};
                     # we need to remember the actual price which the post office charges
-                    $meta->{postage_cost}->{"${country}_actual"} = $post->{$country};
+                    $meta->{postage_cost}->{${country}}->{actual} = $post->{$country};
                 }
                 # If we have free domestic postage, adjust the
                 # prices accordingly, the domestic postage cost
@@ -423,10 +423,10 @@ sub process {
                 # from the postage charge
                 if ($meta->{free_postage})
                 {
-                    $meta->{free_postage_cost} = $meta->{postage_cost}->{au};
+                    $meta->{free_postage_cost} = $meta->{postage_cost}->{au}->{cost};
                     foreach my $country (keys %{$post})
                     {
-                        $meta->{postage_cost}->{$country} -= $meta->{free_postage_cost};
+                        $meta->{postage_cost}->{$country}->{cost} -= $meta->{free_postage_cost};
                     }
                 }
                 else
@@ -434,42 +434,15 @@ sub process {
                     $meta->{free_postage_cost} = 0;
                 }
                 # And Etsy are now charging 5% on shipping costs as well!
+                # Fold these fees into the general fees, by taking the max
                 foreach my $country (keys %{$post})
                 {
-                    $meta->{postage_cost}->{"${country}_fees"} = ($post->{$country} * 0.05);
-                    $meta->{postage_cost}->{$country} += ($post->{$country} * 0.05);
+                    my $f = ($post->{$country} * 0.05);
+                    $meta->{postage_cost}->{$country}->{fees} = $f;
+                    $meta->{postage_cost}->{$country}->{cost} += $f;
                 }
             }
         }
-    }
-
-    # -----------------------------------------------------------
-    # ITEMIZE TIME and ITEMIZE COSTS
-    # Inventory:
-    # Every item listed in my inventory and listed on Etsy
-    # takes a certain amount of labour:
-    # * photographing
-    # * naming and tagging the photos
-    # * adding the item to the inventory
-    # * adding the item to Etsy
-    # This is in common for all items, no matter what their labour is,
-    # so I'm doing this as a separate cost.
-    # -----------------------------------------------------------
-    my $itemize_mins = 0;
-    if ($leaf->pagename =~ /inventory/)
-    {
-        $itemize_mins = (exists $meta->{itemize_time}
-            ? $meta->{itemize_time}
-            : (exists $self->{config}->{itemize_time}
-                ? $self->{config}->{itemize_time}
-                : 15));
-    }
-    if ($itemize_mins)
-    {
-        $meta->{itemize_time} = $itemize_mins;
-        my $hours = $itemize_mins / 60.0;
-        $meta->{used_cost_per_hour} = $per_hour;
-        $meta->{itemize_cost} = $hours * $per_hour;
     }
 
     # -----------------------------------------------------------
@@ -497,189 +470,76 @@ sub process {
     }
 
     # -----------------------------------------------------------
-    # INVENTORY TOTAL COSTS AND OVERHEADS
+    # INVENTORY TOTAL COSTS AND FEES
     # Calculate total costs from previously derived costs
-    # Add in the overheads, then re-calculate the total;
-    # this is because some overheads depend on a percentage of the total cost.
-    #
-    # There is more than one kind of formula that can be used;
-    # we need to use the best formula we can.
+    # Add in the fees, then re-calculate the total;
+    # this is because some fees depend on a percentage of the total cost.
     # -----------------------------------------------------------
     if ($leaf->pagename =~ /inventory/)
     {
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $cost_all_materials = $meta->{materials_cost}
+            # --------------------------------------------------------
+            # FORMULA:
+            # wholesale = materials + labour
+            # ---retail = (wholesale * markup) + cost-of-free-postage + fees---
+            # retail = (wholesale * markup) + cost-of-free-postage
+            # (the fees come out of the markup?)
+            # cost_price = materials + fees
+            # --------------------------------------------------------
+            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
+            my $retail_markup = ($meta->{retail_markup} ? $meta->{retail_markup} : 2);
+            my $retail = ($wholesale * $retail_markup)
             + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
-            my $cost_all_labour = $meta->{labour_cost} + $meta->{itemize_cost};
-            my $overheads = calculate_overheads($cost_all_materials + $cost_all_labour);
+            $meta->{wholesale_price} = $wholesale;
+            $meta->{retail_price} = $retail;
+            my $fees_hash = calculate_fees($retail);
+            my $fees = $fees_hash->{total};
+            $meta->{est_fees_breakdown} = $fees_hash;
+            $meta->{estimated_fees} = $fees;
+            my $cost_price = $meta->{materials_cost} + $fees;
+            $meta->{cost_price} = $cost_price;
 
-            # -----------------------------------------------------------
-            ## Here is where we figure the prices with different formulas.
-            my @formula = ();
-            my $base_cost = $cost_all_materials + $cost_all_labour;
-            my $oh1 = calculate_overheads($base_cost);
-            my $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula, {
-                desc => 'materials + labour + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = ($cost_all_labour * 0.5) + ($cost_all_materials * 4);
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula , {
-                desc => '(labour * 0.5) + (materials * 4) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = $cost_all_labour + ($meta->{materials_cost} * 2);
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula , {
-                desc => 'labour + (materials * 2) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 2);
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula , {
-                desc => 'materials + labour + (materials * 2) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 3);
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula , {
-                desc => 'materials + labour + (materials * 3) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = $cost_all_materials + $cost_all_labour + ($meta->{materials_cost} * 4);
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula , {
-                desc => 'materials + labour + (materials * 4) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = ($cost_all_materials + $cost_all_labour) * 2;
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula, {
-                desc => '((materials + labour) * 2) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-            $base_cost = ($cost_all_materials + $cost_all_labour) * 2 * 1.5;
-            $oh1 = calculate_overheads($base_cost);
-            $oh2 = calculate_overheads($base_cost + $oh1);
-            push @formula, {
-                desc => '((materials + labour) * 2 * 1.5) + overheads',
-                cost => ($base_cost + $oh2),
-            };
-
-            # sort the formula costs
-            my @sformula = sort {$a->{cost} <=> $b->{cost}} @formula;
-            for (my $i = 0; $i <= $#sformula; $i++)
-            {
-                $meta->{"formula${i}"}->{cost} = $sformula[$i]->{cost};
-                $meta->{"formula${i}"}->{desc} = $sformula[$i]->{desc};
-            }
-
+            # --------------------------------------------------------
+            # Market price
+            # Figure out what price-class the calculated retail price falls into
+            # --------------------------------------------------------
             if (@mkt_prices)
             {
-                if (defined $meta->{price_class} 
-                        and $meta->{price_class} eq 'bargain')
+                if ($meta->{retail_price} < $mkt_prices[0])
                 {
-                    $meta->{suggested_price} = $sformula[0]->{cost};
-                    $meta->{price_formula} = $sformula[0]->{desc};
-                    if ($meta->{suggested_price} < $mkt_prices[0])
-                    {
-                        $meta->{suggested_price} = $sformula[1]->{cost};
-                        $meta->{price_formula} = $sformula[1]->{desc};
-                    }
-                    if ($meta->{suggested_price} > $mkt_prices[1]) # too pricey for bargain
-                    {
-                        $meta->{price_class} = 'low-midrange';
-                    }
+                    # increase the market price to the minimum price
+                    # (this is very unlikely to be needed)
+                    $meta->{price_class} = 'bargain';
+                    $meta->{retail_price} = $mkt_prices[0];
                 }
-                elsif (defined $meta->{price_class}
-                        and $meta->{price_class} eq 'premium')
+                elsif ($meta->{retail_price}  <= $mkt_prices[1])
                 {
-                    $meta->{suggested_price} = $sformula[$#sformula]->{cost};
-                    $meta->{price_formula} = $sformula[$#sformula]->{desc};
-                    if ($meta->{suggested_price} < $mkt_prices[2]) # not costly enough
-                    {
-                        $meta->{price_class} = 'midrange';
-                    }
-                    if ($meta->{suggested_price} > $mkt_prices[3]) # too costly
-                    {
-                        $meta->{suggested_price} = $sformula[$#sformula - 1]->{cost};
-                        $meta->{price_formula} = $sformula[$#sformula - 1]->{desc};
-                    }
+                    $meta->{price_class} = 'bargain';
                 }
-                elsif (defined $meta->{price_class}
-                        and $meta->{price_class} eq 'low-premium')
-                {
-                    # higher than midrange, but not much higher
-                    $meta->{suggested_price} = $sformula[0]->{cost};
-                    $meta->{price_formula} = $sformula[0]->{desc};
-                    my $i = 1;
-                    while ($meta->{suggested_price} < $mkt_prices[2]
-                            and $i <= $#sformula)
-                    {
-                        $meta->{suggested_price} = $sformula[$i]->{cost};
-                        $meta->{price_formula} = $sformula[$i]->{desc};
-                        $i++;
-                    }
-                }
-                elsif (defined $meta->{price_class}
-                        and $meta->{price_class} eq 'low-midrange')
-                {
-                    # higher than bargain, but not much higher
-                    $meta->{suggested_price} = $sformula[0]->{cost};
-                    $meta->{price_formula} = $sformula[0]->{desc};
-                    my $i = 1;
-                    while ($meta->{suggested_price} < $mkt_prices[1]
-                            and $i <= $#sformula)
-                    {
-                        $meta->{suggested_price} = $sformula[$i]->{cost};
-                        $meta->{price_formula} = $sformula[$i]->{desc};
-                        $i++;
-                    }
-                }
-                else # midrange
+                elsif ($meta->{retail_price}  > $mkt_prices[1]
+                        and $meta->{retail_price} <= $mkt_prices[2])
                 {
                     $meta->{price_class} = 'midrange';
-                    $meta->{suggested_price} = $sformula[$#sformula]->{cost};
-                    $meta->{price_formula} = $sformula[$#sformula]->{desc};
-                    # while too costly for midrange, change formula
-                    my $i = $#sformula - 1;
-                    while ($meta->{suggested_price} > $mkt_prices[2]
-                            and $i >= 0)
-                    {
-                        $meta->{suggested_price} = $sformula[$i]->{cost};
-                        $meta->{price_formula} = $sformula[$i]->{desc};
-                        $i--;
-                    }
-                    if ($meta->{suggested_price} > $mkt_prices[2]) # still too costly
-                    {
-                        $meta->{price_class} = 'low-premium';
-                    }
-                    if ($meta->{suggested_price} < $mkt_prices[1]) # less than midrange
-                    {
-                        $meta->{price_class} = 'bargain';
-                    }
+                }
+                elsif ($meta->{retail_price}  > $mkt_prices[2]
+                        and $meta->{retail_price} <= $mkt_prices[3])
+                {
+                    $meta->{price_class} = 'premium';
+                }
+                else
+                {
+                    $meta->{price_class} = 'OVERPRICED';
                 }
             }
-            else # no market info, use default formula
-            {
-                $meta->{suggested_price} = $formula[0]->{cost};
-                $meta->{price_formula} = $formula[0]->{desc};
-            }
-            $meta->{estimated_overheads} = calculate_overheads($meta->{suggested_price});
 
             # -----------------------------------------------------------
             # This is the actual price set by the human being
             if ($meta->{actual_price})
             {
-                $meta->{actual_overheads} = calculate_overheads($meta->{actual_price});
+                my $fh = calculate_fees($meta->{actual_price});
+                $meta->{actual_fees} = $fh->{total};
+                $meta->{fees_breakdown} = $fh; # this replaces estimated fees
                 if ($leaf->pagename =~ /sold/)
                 {
                     $meta->{gross_price} = $meta->{actual_price}
@@ -691,9 +551,9 @@ sub process {
     else # components
     {
         # COMPONENTS TOTAL COSTS
-        # Components don't have overheads.
-        # Nor an itemize_cost; don't want to count the itemize_cost twice;
-        # all that components do is enable me to save time later.
+        # Components don't have fees.
+        # All that components do is enable me to save time later
+        # and to record information which might otherwise be forgotten.
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
             my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
@@ -706,34 +566,44 @@ sub process {
     return $leaf;
 } # process
 
-=head2 calculate_overheads
+=head2 calculate_fees
 
-Calculate overheads like listing fees and COMMISSION (which depends on the total, backwards)
+Calculate fees like listing fees and COMMISSION (which depends on the total, backwards)
 
 =cut
-sub calculate_overheads {
+sub calculate_fees {
     my $bare_cost = shift;
 
-    my $overheads = ((0.2 / 0.7) # US 20c per listing per four months
-        * 5) # most things are not selling, need to relist more frequently to improve search rank
+    my $feesb = {};
+    my $fees = 0;
+    $feesb->{listing} = ((0.2 / 0.7) # US 20c per listing per four months
+        * 3); # most things are not selling, need to relist more frequently to improve search rank
+    $fees += $feesb->{listing};
     # "Etsy Payments" fees are 25c AU per item, plus 4% of item cost
-    +  0.25 + ($bare_cost * 0.04)
-    # Etsy transaction fees are now: 5% commission -- and that is on shipping too!
-    + ($bare_cost * 0.05);
+    $feesb->{etsy_payments} = 0.25 + ($bare_cost * 0.04);
+    $fees += $feesb->{etsy_payments};
+    # Etsy transaction fees are now: 5% commission
+    $feesb->{etsy_transaction} = ($bare_cost * 0.05);
+    $fees += $feesb->{etsy_transaction};
+    # -- and that is on shipping too!
 
-    # Add another $2 for Promoted Listings (at a budget of US$1 per day)
-    # (see the money-etsy page for the calculations)
-    $overheads += 2;
+    # Add another 10% for Promoted Listings (at a budget of US$1 per day)
+    # (Originally added $2 but for low-cost items that is too much)
+    $feesb->{promoted} = (($bare_cost * 0.1) > 2 ? 2 : ($bare_cost * 0.1));
+    $fees += $feesb->{promoted};
     
     # And now Etsy are charging GST on their fees
-    $overheads += $overheads * 0.1;
+    # I think they aren't charging me any more
+    ##$feesb->{GST} = $fees * 0.1;
+    ##$fees += $feesb->{GST};
 
     # I'm not including Paypal here -- that's for if I'm not selling through Etsy.
     # (Paypal fees: 3.5% plus 30c per transaction?)
     # GST is not included because I don't have to pay GST because I'm not making $75,000
+    $feesb->{total} = $fees;
 
-    return $overheads;
-} # calculate_overheads
+    return $feesb;
+} # calculate_fees
 
 =head2 _do_one_col_query
 

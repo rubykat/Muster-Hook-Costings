@@ -102,6 +102,8 @@ sub get_function_result {
     {
 	return "{{\!${func}(${argvals})}}";
     }
+    # This function is broken
+    return "BROKEN {{\!${func}(${argvals})}}";
 
     my $value;
 
@@ -129,9 +131,9 @@ sub get_function_result {
                         : 2));
             }
             my $labour_cost = ($leaf->{meta}->{labour_time} / 60) * $cost_per_hour;
-            my $itemize_cost = ($leaf->{meta}->{itemize_time} / 60) * $cost_per_hour;
-            my $cost_without_oh = $leaf->{meta}->{materials_cost} + $labour_cost + $itemize_cost;
-            my $overheads = Muster::Hook::Costings::calculate_overheads($cost_without_oh);
+            my $cost_without_oh = $leaf->{meta}->{materials_cost} + $labour_cost;
+            my $fh = Muster::Hook::Costings::calculate_fees($cost_without_oh);
+            my $overheads = $fh->{total};
             my $wholesale = $cost_without_oh + $overheads;
             my $retail = $wholesale * $retail_multiplier;
             $value = "dyncost($argvals) = ($cost_without_oh + $overheads = $wholesale) * $retail_multiplier = $retail";
