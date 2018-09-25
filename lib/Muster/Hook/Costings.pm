@@ -556,7 +556,8 @@ sub process {
         # and to record information which might otherwise be forgotten.
         if (exists $meta->{materials_cost} or exists $meta->{labour_cost})
         {
-            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
+            my $wholesale = $meta->{materials_cost}
+            + (defined $meta->{labour_cost} ? $meta->{labour_cost} : 0);
             $meta->{wholesale_cost} = $wholesale;
         }
     }
