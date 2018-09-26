@@ -384,6 +384,7 @@ sub process {
         
     }
     # POSTAGE - Inventory only
+    my $max_postage_cost = 0;
     if ($leaf->pagename =~ /inventory/
             and exists $meta->{postage}
             and defined $meta->{postage})
@@ -417,29 +418,40 @@ sub process {
                     # we need to remember the actual price which the post office charges
                     $meta->{postage_cost}->{${country}}->{actual} = $post->{$country};
                 }
-                # If we have free domestic postage, adjust the
-                # prices accordingly, the domestic postage cost
-                # will be added to the item cost, and removed
-                # from the postage charge
+                # Postage-offset is a percentage of the domestic postage
+                # cost to offset; that is, adjust the prices to add that
+                # amount to the item cost and remove that amount from the
+                # postage charge. If the postage-offset is 100%, then that
+                # gives free domestic postage.
                 if ($meta->{free_postage})
                 {
-                    $meta->{free_postage_cost} = $meta->{postage_cost}->{au}->{cost};
+                    $meta->{postage_offset} = 100;
+                }
+                if ($meta->{postage_offset})
+                {
+                    $meta->{postage_offset_cost} =
+                    ($meta->{postage_cost}->{au}->{cost}
+                        * ($meta->{postage_offset}/100));
                     foreach my $country (keys %{$post})
                     {
-                        $meta->{postage_cost}->{$country}->{cost} -= $meta->{free_postage_cost};
+                        $meta->{postage_cost}->{$country}->{cost} -=
+                        $meta->{postage_offset_cost};
                     }
                 }
                 else
                 {
-                    $meta->{free_postage_cost} = 0;
+                    $meta->{postage_offset_cost} = 0;
                 }
                 # And Etsy are now charging 5% on shipping costs as well!
                 # Fold these fees into the general fees, by taking the max
                 foreach my $country (keys %{$post})
                 {
                     my $f = ($post->{$country} * 0.05);
+                    if ($post->{country} > $max_postage_cost)
+                    {
+                        $max_postage_cost = $post->{country};
+                    }
                     $meta->{postage_cost}->{$country}->{fees} = $f;
-                    $meta->{postage_cost}->{$country}->{cost} += $f;
                 }
             }
         }
@@ -490,10 +502,10 @@ sub process {
             my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
             my $retail_markup = ($meta->{retail_markup} ? $meta->{retail_markup} : 2);
             my $retail = ($wholesale * $retail_markup)
-            + ($meta->{free_postage_cost} ? $meta->{free_postage_cost} : 0);
+            + ($meta->{postage_offset_cost} ? $meta->{postage_offset_cost} : 0);
             $meta->{wholesale_price} = $wholesale;
             $meta->{retail_price} = $retail;
-            my $fees_hash = calculate_fees($retail);
+            my $fees_hash = calculate_fees($retail,$max_postage_cost);
             my $fees = $fees_hash->{total};
             $meta->{est_fees_breakdown} = $fees_hash;
             $meta->{estimated_fees} = $fees;
@@ -514,7 +526,9 @@ sub process {
             # This is the actual price set by the human being
             if ($meta->{actual_price})
             {
-                my $fh = calculate_fees($meta->{actual_price});
+                my $fh = calculate_fees($meta->{actual_price},
+                    ($meta->{actual_postage} ? $meta->{actual_postage}
+                        : $max_postage_cost));
                 $meta->{actual_fees} = $fh->{total};
                 $meta->{fees_breakdown} = $fh; # this replaces estimated fees
                 $meta->{actual_cost_price} = $meta->{materials_cost} + $meta->{actual_fees};
@@ -557,6 +571,7 @@ Calculate fees like listing fees and COMMISSION (which depends on the total, bac
 =cut
 sub calculate_fees {
     my $bare_cost = shift;
+    my $postage_cost = shift;
 
     my $feesb = {};
     my $fees = 0;
@@ -570,6 +585,8 @@ sub calculate_fees {
     $feesb->{etsy_transaction} = ($bare_cost * 0.05);
     $fees += $feesb->{etsy_transaction};
     # -- and that is on shipping too!
+    $feesb->{postage_fees} = ($postage_cost * 0.05);
+    $fees += $feesb->{postage_fees};
 
     # Add another 10% for Promoted Listings (at a budget of US$1 per day)
     # (Originally added $2 but for low-cost items that is too much)
