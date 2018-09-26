@@ -447,9 +447,9 @@ sub process {
                 foreach my $country (keys %{$post})
                 {
                     my $f = ($post->{$country} * 0.05);
-                    if ($post->{country} > $max_postage_cost)
+                    if ($post->{$country} > $max_postage_cost)
                     {
-                        $max_postage_cost = $post->{country};
+                        $max_postage_cost = $post->{$country};
                     }
                     $meta->{postage_cost}->{$country}->{fees} = $f;
                 }
