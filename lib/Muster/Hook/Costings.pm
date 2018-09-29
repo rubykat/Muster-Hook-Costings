@@ -397,7 +397,7 @@ sub process {
         # to make it easier to add new postage profiles.
 
         my $cref = $self->_do_n_col_query('reference',
-            "SELECT packaging,postage FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
+            "SELECT packaging,postage,per_additional,postage_offset FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
@@ -423,25 +423,48 @@ sub process {
                 # amount to the item cost and remove that amount from the
                 # postage charge. If the postage-offset is 100%, then that
                 # gives free domestic postage.
-                if ($meta->{free_postage})
+                if ($row->{postage_offset})
                 {
-                    $meta->{postage_offset} = 100;
-                }
-                if ($meta->{postage_offset})
-                {
+                    $meta->{postage_offset} = $row->{postage_offset};
                     $meta->{postage_offset_cost} =
                     ($meta->{postage_cost}->{au}->{cost}
-                        * ($meta->{postage_offset}/100));
+                        * ($row->{postage_offset}/100));
                     foreach my $country (keys %{$post})
                     {
                         $meta->{postage_cost}->{$country}->{cost} -=
-                        $meta->{postage_offset_cost};
+                            $meta->{postage_offset_cost};
                     }
                 }
                 else
                 {
                     $meta->{postage_offset_cost} = 0;
                 }
+                # Per-additional is a percentage of the country's postage cost which
+                # is added to postage for each additional item bought.
+                # Normally it is 100%, but one can offer discounts because
+                # one can combine postage.
+                foreach my $country (keys %{$post})
+                {
+                    if (defined $row->{postage_offset} && $row->{postage_offset} == 100) # free postage
+                    {
+                        $meta->{postage_cost}->{$country}->{per_additional} = 0;
+                    }
+                    elsif (defined $row->{per_additional} && $row->{per_additional} == 0)
+                    {
+                        $meta->{postage_cost}->{$country}->{per_additional} = 0;
+                    }
+                    elsif (defined $row->{per_additional} && $row->{per_additional} > 0)
+                    {
+                        $meta->{postage_cost}->{$country}->{per_additional} = 
+                            $meta->{postage_cost}->{country}->{cost} * ($row->{per_additional}/100);
+                    }
+                    else
+                    {
+                        $meta->{postage_cost}->{$country}->{per_additional} = 
+                            $meta->{postage_cost}->{country}->{cost};
+                    }
+                }
+                
                 # And Etsy are now charging 5% on shipping costs as well!
                 # Fold these fees into the general fees, by taking the max
                 foreach my $country (keys %{$post})
@@ -494,9 +517,8 @@ sub process {
             # --------------------------------------------------------
             # FORMULA:
             # wholesale = materials + labour
-            # ---retail = (wholesale * markup) + cost-of-free-postage + fees---
-            # retail = (wholesale * markup) + cost-of-free-postage
-            # (the fees come out of the markup?)
+            # retail = (wholesale * markup) + postage-offset-cost
+            # (the fees come out of the markup)
             # cost_price = materials + fees
             # --------------------------------------------------------
             my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
