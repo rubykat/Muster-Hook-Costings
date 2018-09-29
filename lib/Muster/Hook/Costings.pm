@@ -416,7 +416,7 @@ sub process {
                 {
                     $meta->{postage_cost}->{$country}->{cost} = $post->{$country};
                     # we need to remember the actual price which the post office charges
-                    $meta->{postage_cost}->{${country}}->{actual} = $post->{$country};
+                    $meta->{postage_cost}->{$country}->{actual} = $post->{$country};
                 }
                 # Postage-offset is a percentage of the domestic postage
                 # cost to offset; that is, adjust the prices to add that
@@ -456,12 +456,12 @@ sub process {
                     elsif (defined $row->{per_additional} && $row->{per_additional} > 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 
-                            $meta->{postage_cost}->{country}->{cost} * ($row->{per_additional}/100);
+                            $meta->{postage_cost}->{$country}->{cost} * ($row->{per_additional}/100);
                     }
                     else
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 
-                            $meta->{postage_cost}->{country}->{cost};
+                            $meta->{postage_cost}->{$country}->{cost};
                     }
                 }
                 
