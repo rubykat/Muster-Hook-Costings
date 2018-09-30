@@ -445,11 +445,7 @@ sub process {
                 # one can combine postage.
                 foreach my $country (keys %{$post})
                 {
-                    if (defined $row->{postage_offset} && $row->{postage_offset} == 100) # free postage
-                    {
-                        $meta->{postage_cost}->{$country}->{per_additional} = 0;
-                    }
-                    elsif (defined $row->{per_additional} && $row->{per_additional} == 0)
+                    if (defined $row->{per_additional} && $row->{per_additional} == 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 0;
                     }
@@ -463,6 +459,11 @@ sub process {
                         $meta->{postage_cost}->{$country}->{per_additional} = 
                             $meta->{postage_cost}->{$country}->{cost};
                     }
+                }
+                # If there is free postage, than the AU postage has zero per_additional
+                if (defined $row->{postage_offset} && $row->{postage_offset} == 100) # free postage
+                {
+                    $meta->{postage_cost}->{au}->{per_additional} = 0;
                 }
                 
                 # And Etsy are now charging 5% on shipping costs as well!
