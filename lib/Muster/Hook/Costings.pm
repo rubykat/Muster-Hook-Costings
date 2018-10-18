@@ -560,6 +560,13 @@ sub process {
                     $meta->{actual_price_class} = _market_class(\@mkt_prices,
                         $meta->{actual_price});
                 }
+                if ($meta->{on_sale}) # percentage off actual price
+                {
+                    $meta->{sale_price} = $meta->{actual_price} - ($meta->{actual_price} * ($meta->{on_sale} / 100));
+                    my $fh2 = calculate_fees($meta->{sale_price}, $max_postage_cost);
+                    $meta->{sale_fees} = $fh2->{total};
+                    $meta->{sale_return} = $meta->{sale_price} - ($meta->{sale_fees} + $meta->{materials_cost});
+                }
                 if ($leaf->pagename =~ /sold/)
                 {
                     $meta->{gross_price} = $meta->{actual_price}
