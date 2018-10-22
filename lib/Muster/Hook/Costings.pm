@@ -416,9 +416,9 @@ sub process {
                 $meta->{postage_cost} = {};
                 foreach my $country (keys %{$post})
                 {
-                    $meta->{postage_cost}->{$country}->{cost} = $post->{$country};
+                    $meta->{postage_cost}->{$country}->{cost} = $post->{$country}->{cost};
                     # we need to remember the actual price which the post office charges
-                    $meta->{postage_cost}->{$country}->{actual} = $post->{$country};
+                    $meta->{postage_cost}->{$country}->{actual} = $post->{$country}->{cost};
                 }
                 # Postage-offset is a percentage of the domestic postage
                 # cost to offset; that is, adjust the prices to add that
@@ -473,10 +473,10 @@ sub process {
                 # Fold these fees into the general fees, by taking the max
                 foreach my $country (keys %{$post})
                 {
-                    my $f = ($post->{$country} * 0.05);
-                    if ($post->{$country} > $max_postage_cost)
+                    my $f = ($post->{$country}->{cost} * 0.05);
+                    if ($post->{$country}->{cost} > $max_postage_cost)
                     {
-                        $max_postage_cost = $post->{$country};
+                        $max_postage_cost = $post->{$country}->{cost};
                     }
                     $meta->{postage_cost}->{$country}->{fees} = $f;
                 }
