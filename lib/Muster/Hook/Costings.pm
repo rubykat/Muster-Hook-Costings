@@ -553,7 +553,7 @@ sub process {
             if ($meta->{actual_price})
             {
                 my $fh = calculate_fees($meta->{actual_price},
-                    ($meta->{actual_postage} ? $meta->{actual_postage}
+                    ($meta->{sold_postage} ? $meta->{sold_postage}
                         : $max_postage_cost));
                 $meta->{actual_fees} = $fh->{total};
                 $meta->{fees_breakdown} = $fh; # this replaces estimated fees
@@ -573,7 +573,13 @@ sub process {
                 if ($leaf->pagename =~ /sold/)
                 {
                     $meta->{gross_price} = ($meta->{sale_price} ? $meta->{sale_price} : $meta->{actual_price})
-                    + ($meta->{actual_postage} ? $meta->{actual_postage} : 0);
+                    + ($meta->{sold_postage} ? $meta->{sold_postage} : 0);
+                    $meta->{actual_return} = $meta->{gross_price} -
+                    (
+                        $meta->{materials_cost}
+                        + ($meta->{on_sale} ? $meta->{sale_fees} : $meta->{actual_fees})
+                        + ($meta->{actual_postage} ? $meta->{actual_postage} : $meta->{sold_postage})
+                    );
                 }
             }
         }
