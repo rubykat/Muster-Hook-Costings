@@ -399,7 +399,7 @@ sub process {
         # to make it easier to add new postage profiles.
 
         my $cref = $self->_do_n_col_query('reference',
-            "SELECT packaging,postage,per_additional,postage_offset FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
+            "SELECT packaging,postage,postage_offset FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
