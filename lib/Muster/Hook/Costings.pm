@@ -392,6 +392,8 @@ sub process {
         # Note that some of my jewellery is too thick to be able to be sent as
         # a Large Letter, while the really flat pieces do fit into the Large
         # Letter category.
+        # Also note that there is a tendency for international items to be
+        # sent as a Small Parcel even though they are small enough to be a Large Letter.
 
         # The postage information is from the reference wiki,
         # to make it easier to add new postage profiles.
@@ -443,16 +445,17 @@ sub process {
                 # is added to postage for each additional item bought.
                 # Normally it is 100%, but one can offer discounts because
                 # one can combine postage.
+                # Now doing this on a per-country basis, because domestic may differ from international.
                 foreach my $country (keys %{$post})
                 {
-                    if (defined $row->{per_additional} && $row->{per_additional} == 0)
+                    if (defined $row->{$country}->{per_additional} && $row->{$country}->{per_additional} == 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 0;
                     }
-                    elsif (defined $row->{per_additional} && $row->{per_additional} > 0)
+                    elsif (defined $row->{$country}->{per_additional} && $row->{$country}->{per_additional} > 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 
-                            $meta->{postage_cost}->{$country}->{cost} * ($row->{per_additional}/100);
+                            $meta->{postage_cost}->{$country}->{cost} * ($row->{$country}->{per_additional}/100);
                     }
                     else
                     {
