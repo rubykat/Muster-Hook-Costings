@@ -448,14 +448,14 @@ sub process {
                 # Now doing this on a per-country basis, because domestic may differ from international.
                 foreach my $country (keys %{$post})
                 {
-                    if (defined $row->{$country}->{per_additional} && $row->{$country}->{per_additional} == 0)
+                    if (defined $post->{$country}->{per_additional} && $post->{$country}->{per_additional} == 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 0;
                     }
-                    elsif (defined $row->{$country}->{per_additional} && $row->{$country}->{per_additional} > 0)
+                    elsif (defined $post->{$country}->{per_additional} && $post->{$country}->{per_additional} > 0)
                     {
                         $meta->{postage_cost}->{$country}->{per_additional} = 
-                            $meta->{postage_cost}->{$country}->{cost} * ($row->{$country}->{per_additional}/100);
+                            $meta->{postage_cost}->{$country}->{cost} * ($post->{$country}->{per_additional}/100);
                     }
                     else
                     {
