@@ -572,7 +572,7 @@ sub process {
                 }
                 if ($leaf->pagename =~ /sold/)
                 {
-                    $meta->{gross_price} = $meta->{actual_price}
+                    $meta->{gross_price} = ($meta->{sale_price} ? $meta->{sale_price} : $meta->{actual_price})
                     + ($meta->{actual_postage} ? $meta->{actual_postage} : 0);
                 }
             }
