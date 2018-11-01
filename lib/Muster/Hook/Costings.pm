@@ -175,6 +175,10 @@ sub process {
                     {
                         $item_mins = $item->{count} * $minutes;
                     }
+                    elsif ($item->{amount}) # There is a single multiplier
+                    {
+                        $item_mins = $item->{amount} * $minutes;
+                    }
                     else # there is no multiplier, it is a set time
                     {
                         $item_mins = $minutes;
