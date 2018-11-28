@@ -534,7 +534,7 @@ sub process {
             my $retail = ($wholesale * $retail_markup)
             + ($meta->{postage_offset_cost} ? $meta->{postage_offset_cost} : 0);
             $meta->{wholesale_price} = $wholesale;
-            $meta->{retail_price} = $retail;
+            $meta->{est_retail_price} = $retail;
             my $fees_hash = calculate_fees($retail,$max_postage_cost);
             my $fees = $fees_hash->{total};
             $meta->{est_fees_breakdown} = $fees_hash;
@@ -549,7 +549,7 @@ sub process {
             if (@mkt_prices)
             {
                 $meta->{price_class} = _market_class(\@mkt_prices,
-                    $meta->{retail_price});
+                    $meta->{est_retail_price});
             }
 
             # -----------------------------------------------------------
