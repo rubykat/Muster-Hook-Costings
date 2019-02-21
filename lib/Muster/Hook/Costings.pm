@@ -543,6 +543,21 @@ sub process {
             $meta->{cost_price} = $cost_price;
 
             # --------------------------------------------------------
+            # The formula suggested by Etsy is
+            # (hourly overhead + production cost + profit) x 4
+            # where "hourly overhead" (is confusing) is the fee stuff spread over the hours you work?
+            # -- I'll plug in "estimated fees" here
+            # and "production cost" is materials_cost + labour_cost
+            # and "profit" is for "building your business"
+            # -- I'll make this 20% of the total of the other bits
+            #
+            # See https://www.etsy.com/au/seller-handbook/article/create-listings-that-convert/366469719354
+            # --------------------------------------------------------
+            my $etsy_wholesale = ($meta->{materials_cost} + $meta->{labour_cost} + $fees) * 1.2;
+            my $etsy_retail = $etsy_wholesale * 4;
+            $meta->{etsy_est_retail_price} = $etsy_retail;
+            
+            # --------------------------------------------------------
             # Market price
             # Figure out what price-class the calculated retail price falls into
             # --------------------------------------------------------
