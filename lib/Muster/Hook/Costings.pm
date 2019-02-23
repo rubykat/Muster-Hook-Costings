@@ -524,12 +524,13 @@ sub process {
         {
             # --------------------------------------------------------
             # FORMULA:
-            # wholesale = materials + labour
+            # wholesale = (materials + labour) * wholesale-markup
             # retail = (wholesale * markup) + postage-offset-cost
             # (the fees come out of the markup)
             # cost_price = materials + fees
             # --------------------------------------------------------
-            my $wholesale = $meta->{materials_cost} + $meta->{labour_cost};
+            my $wholesale_markup = ($meta->{wholesale_markup} ? $meta->{wholesale_markup} : 1.2);
+            my $wholesale = ($meta->{materials_cost} + $meta->{labour_cost}) * $wholesale_markup;
             my $retail_markup = ($meta->{retail_markup} ? $meta->{retail_markup} : 2);
             my $retail = ($wholesale * $retail_markup)
             + ($meta->{postage_offset_cost} ? $meta->{postage_offset_cost} : 0);
@@ -542,21 +543,6 @@ sub process {
             my $cost_price = $meta->{materials_cost} + $fees;
             $meta->{cost_price} = $cost_price;
 
-            # --------------------------------------------------------
-            # The formula suggested by Etsy is
-            # (hourly overhead + production cost + profit) x 4
-            # where "hourly overhead" (is confusing) is the fee stuff spread over the hours you work?
-            # -- I'll plug in "estimated fees" here
-            # and "production cost" is materials_cost + labour_cost
-            # and "profit" is for "building your business"
-            # -- I'll make this 20% of the total of the other bits
-            #
-            # See https://www.etsy.com/au/seller-handbook/article/create-listings-that-convert/366469719354
-            # --------------------------------------------------------
-            my $etsy_wholesale = ($meta->{materials_cost} + $meta->{labour_cost} + $fees) * 1.2;
-            my $etsy_retail = $etsy_wholesale * 4;
-            $meta->{etsy_est_retail_price} = $etsy_retail;
-            
             # --------------------------------------------------------
             # Market price
             # Figure out what price-class the calculated retail price falls into
