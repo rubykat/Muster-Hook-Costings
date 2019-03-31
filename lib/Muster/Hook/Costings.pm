@@ -122,32 +122,8 @@ sub process {
         {
             my $item = $constr->{$key};
             my $item_mins = 0;
-            if (defined $item->{from} and $item->{from} eq 'yarn')
-            {
-                # Calculate stitches_length if need be
-                if (!$item->{stitches_length}
-                        and defined $item->{length}
-                        and defined $item->{stitches_per})
-                {
-                    $item->{stitches_length} = ($item->{stitches_per}->{stitches} / $item->{stitches_per}->{length}) * $item->{length};
-                }
-
-                # Look in the reference database for metrics
-                my $cref = $self->_do_n_col_query('reference',
-                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND title = '$item->{method}';");
-                if ($cref and $cref->[0])
-                {
-                    my $row = $cref->[0];
-                    my $minutes = $row->{minutes};
-                    my $wide = $row->{width};
-                    my $long = $row->{length};
-
-                    $item_mins = ((($item->{stitches_width} * $item->{stitches_length}) / ($wide * $long)) * $minutes);
-                    # round them
-                    $item_mins=sprintf ("%.0f",$item_mins+.5);
-                }
-            }
-            elsif (defined $item->{from} and $item->{from} eq 'metrics')
+            if (defined $item->{from}
+                    and ($item->{from} eq 'metrics' or $item->{from} eq 'yarn'))
             {
                 # Calculate stitches_length if need be
                 if (!$item->{stitches_length}
@@ -242,13 +218,30 @@ sub process {
             {
                 if ($item->{from} eq 'yarn')
                 {
-                    my $cref = $self->_do_n_col_query('yarn',
-                        "SELECT BallCost,Materials FROM yarn WHERE SourceCode = '$item->{source}' AND Name = '$item->{id}';");
+                    my $cref = $self->_do_n_col_query('yarns',
+                        "SELECT cost,materials FROM yarn WHERE source = '$item->{source}' AND label = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
-                        $item_cost = $row->{BallCost};
-                        my @mar = split(/[|]/, $row->{Materials});
+                        $item_cost = $row->{cost};
+                        my @mar = split(/[|]/, $row->{materials});
+                        foreach my $mm (@mar)
+                        {
+                            $mm =~ s/Viscose/Artificial Silk/;
+                            $mm =~ s/Rayon/Artificial Silk/;
+                            $materials_hash{$mm}++;
+                        }
+                    }
+                }
+                elsif ($item->{from} eq 'yarns') # new yarn database
+                {
+                    my $cref = $self->_do_n_col_query('yarns',
+                        "SELECT cost,materials FROM yarn WHERE name = '$item->{id}';");
+                    if ($cref and $cref->[0])
+                    {
+                        my $row = $cref->[0];
+                        $item_cost = $row->{cost};
+                        my @mar = split(/[|]/, $row->{materials});
                         foreach my $mm (@mar)
                         {
                             $mm =~ s/Viscose/Artificial Silk/;
@@ -272,12 +265,16 @@ sub process {
                 elsif ($item->{from} eq 'supplies')
                 {
                     my $cref = $self->_do_n_col_query('supplies',
-                        "SELECT cost,materials,title,tags FROM supplies_info WHERE Name = '$item->{id}';");
+                        "SELECT cost,materials FROM supplies_info WHERE name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
                         $item_cost = $row->{cost};
-                        $materials_hash{$row->{materials}}++;
+                        my @mar = split(/[|]/, $row->{materials});
+                        foreach my $mm (@mar)
+                        {
+                            $materials_hash{$mm}++;
+                        }
                     }
                 }
                 elsif ($item->{from} eq 'made_parts'
