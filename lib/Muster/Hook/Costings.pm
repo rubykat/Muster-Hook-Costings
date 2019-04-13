@@ -236,7 +236,7 @@ sub process {
                 elsif ($item->{from} eq 'yarns') # new yarn database
                 {
                     my $cref = $self->_do_n_col_query('yarns',
-                        "SELECT cost,materials FROM yarn WHERE name = '$item->{id}';");
+                        "SELECT cost,materials FROM yarn WHERE id_name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -265,7 +265,7 @@ sub process {
                 elsif ($item->{from} eq 'supplies')
                 {
                     my $cref = $self->_do_n_col_query('supplies',
-                        "SELECT cost,materials FROM supplies_info WHERE name = '$item->{id}';");
+                        "SELECT cost,materials FROM supplies_info WHERE id_name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
