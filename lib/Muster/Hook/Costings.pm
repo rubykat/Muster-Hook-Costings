@@ -159,8 +159,8 @@ sub process {
                     {
                         $item_mins = $minutes;
                     }
-                    # round them
-                    $item_mins=sprintf ("%.0f",$item_mins+.5);
+                    # round them - don't add 0.5, that is a fallacy, sprintf will round without that
+                    $item_mins=sprintf ("%.0f",$item_mins);
                 }
                 else
                 {
