@@ -469,6 +469,18 @@ sub process {
                 {
                     $meta->{postage_cost}->{au}->{per_additional} = 0;
                 }
+
+                # Express is the cost of express post. Need to calculate the difference
+                # between this cost and the non-express cost, since Etsy does this as
+                # an upgrade added on to the postage cost, not as a different postage cost.
+                foreach my $country (keys %{$post})
+                {
+                    if (defined $post->{$country}->{express} && $post->{$country}->{express} > 0)
+                    {
+                        $meta->{postage_cost}->{$country}->{express_upgrade} = 
+                            ($post->{$country}->{express} - $post->{$country}->{cost});
+                    }
+                }
                 
                 # And Etsy are now charging 5% on shipping costs as well!
                 # Fold these fees into the general fees, by taking the max
