@@ -10,8 +10,8 @@ L<Muster::Hook::Costings> does costings derivation;
 that is, derives costs of things from the page meta-data
 plus looking up information in various databases.
 
-This just does a bunch of specific calculations;
-I haven't figured out a good way of defining derivations in a config file.
+This does a bunch of very specific custom calculations,
+there is nothing generic about it.
 
 =cut
 
@@ -19,7 +19,6 @@ use Mojo::Base 'Muster::Hook';
 use Muster::Hooks;
 use Muster::LeafFile;
 use DBI;
-use Lingua::EN::Inflexion;
 use YAML::Any;
 use Carp;
 
@@ -92,12 +91,55 @@ sub process {
     my $meta = $leaf->meta;
 
     # -----------------------------------------------------------
-    # All these costings are only relevant for craft inventory pages
-    # or for craft component pages, so skip everything else
+    # All these costings are only relevant for craft inventory pages, for
+    # art_print pages, or for craft component pages, so skip everything else.
     # -----------------------------------------------------------
-    if ($leaf->pagename !~ /(inventory|components)/)
+    
+    if ($leaf->pagename !~ /(inventory|components|art_print)/)
     {
         return $leaf;
+    }
+
+    # -----------------------------------------------------------
+    # Art Prints -- derive fields
+    # In order to save effort, minimal information is set on
+    # art_print pages, and we can derive the full data
+    # This means a bunch of stuff is hard-coded, but this whole module is, so...
+    # -----------------------------------------------------------
+    if ($leaf->pagename =~ /art_print/)
+    {
+        # Required data is sheet_size and sheet_material
+        # If these are not there, don't attempt to derive costings.
+        if (not exists $meta->{sheet_size}
+                or not defined $meta->{sheet_size}
+                or not exists $meta->{sheet_material}
+                or not defined $meta->{sheet_material})
+        {
+            return $leaf;
+        }
+        # Okay, construct the materials hash
+        my %art_materials = ();
+        $art_materials{surface} = {};
+        $art_materials{surface}->{amount} = $meta->{sheet_size};
+        $art_materials{surface}->{id} = $meta->{sheet_material};
+        $art_materials{surface}->{from} = 'supplies';
+
+        $art_materials{fluid_art} = {};
+        $art_materials{fluid_art}->{from} = 'made_parts';
+        # The sheet_size should be 0.5 or 1 only
+        if ($meta->{sheet_size} == 1) # A4 size sheet
+        {
+            $art_materials{fluid_art}->{id} = 'acrylic_pour-on_A4';
+        }
+        elsif ($meta->{sheet_size} == 0.5) # A5 size sheet, half A4
+        {
+            $art_materials{fluid_art}->{id} = 'acrylic_pour-on_A5';
+        }
+        else # error
+        {
+            return $leaf;
+        }
+        $meta->{materials} = \%art_materials;
     }
 
     # -----------------------------------------------------------
@@ -598,7 +640,7 @@ sub process {
             }
         }
     }
-    else # components
+    else # components or art_prints
     {
         # COMPONENTS TOTAL COSTS
         # Components don't have fees.
