@@ -112,17 +112,25 @@ sub process {
         # If these are not there, don't attempt to derive costings.
         if (not exists $meta->{sheet_size}
                 or not defined $meta->{sheet_size}
+                or !$meta->{sheet_size}
                 or not exists $meta->{sheet_material}
-                or not defined $meta->{sheet_material})
+                or not defined $meta->{sheet_material}
+                or !$meta->{sheet_material})
         {
             return $leaf;
         }
         # Okay, construct the materials hash
         my %art_materials = ();
-        $art_materials{surface} = {};
-        $art_materials{surface}->{amount} = $meta->{sheet_size};
-        $art_materials{surface}->{id} = $meta->{sheet_material};
-        $art_materials{surface}->{from} = 'supplies';
+        # Fluid art skins explicitly don't have a surface
+        # but since we aren't accepting an empty sheet_material
+        # it should be defined as "skin" or "none".
+        if ($meta->{sheet_material} !~ /(skin|none)/i)
+        {
+            $art_materials{surface} = {};
+            $art_materials{surface}->{amount} = $meta->{sheet_size};
+            $art_materials{surface}->{id} = $meta->{sheet_material};
+            $art_materials{surface}->{from} = 'supplies';
+        }
 
         $art_materials{fluid_art} = {};
         $art_materials{fluid_art}->{from} = 'made_parts';
