@@ -254,7 +254,7 @@ sub process {
         my $mat = $meta->{materials};
         if (!ref $meta->{materials} and $meta->{materials} =~ /^---/ms) # YAML
         {
-            my $mat = Load($meta->{materials});
+            $mat = Load($meta->{materials});
         }
         foreach my $key (sort keys %{$mat})
         {
@@ -367,7 +367,13 @@ sub process {
                         if ($item->{from} eq 'made_parts'
                                 and defined $row->{materials})
                         {
-                            my @mats = sort keys %{$row->{materials}};
+                            my $component_materials = $row->{materials};
+                            if (!ref $row->{materials}
+                                    and $row->{materials} =~ /^---/ms) # YAML
+                            {
+                                $component_materials = Load($row->{materials});
+                            }
+                            my @mats = sort keys %{$component_materials};
                             foreach my $m (@mats)
                             {
                                 $materials_hash{$m}++;
