@@ -346,7 +346,7 @@ sub process {
                     # to record the *materials* cost for every piece of inventory.
                     # And because we need to use a consistent labour cost.
                     my $cref = $self->_do_n_col_query('reference',
-                        "SELECT labour_time,materials_list,materials_cost FROM flatfields WHERE page GLOB 'Craft/components/${from}/*' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials,materials_cost FROM flatfields WHERE page GLOB 'Craft/components/${from}/*' AND name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -365,9 +365,9 @@ sub process {
                         }
                         $item_cost = $row->{materials_cost};
                         if ($item->{from} eq 'made_parts'
-                                and defined $row->{materials_list})
+                                and defined $row->{materials})
                         {
-                            my @mats = split(/, /, $row->{materials_list});
+                            my @mats = sort keys %{$row->{materials}};
                             foreach my $m (@mats)
                             {
                                 $materials_hash{$m}++;
@@ -393,7 +393,6 @@ sub process {
             $cost += $item_cost;
         } # for each item
         $meta->{materials_cost} = $cost;
-        $meta->{materials_list} = join(', ', sort keys %materials_hash);
     }
     # -----------------------------------------------------------
     # LABOUR COSTS
