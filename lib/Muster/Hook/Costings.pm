@@ -108,38 +108,38 @@ sub process {
     # -----------------------------------------------------------
     if ($leaf->pagename =~ /art_print/)
     {
-        # Required data is sheet_size and sheet_material
+        # Required data is _sheet_size and _sheet_material
         # If these are not there, don't attempt to derive costings.
-        if (not exists $meta->{sheet_size}
-                or not defined $meta->{sheet_size}
-                or !$meta->{sheet_size}
-                or not exists $meta->{sheet_material}
-                or not defined $meta->{sheet_material}
-                or !$meta->{sheet_material})
+        if (not exists $meta->{_sheet_size}
+                or not defined $meta->{_sheet_size}
+                or !$meta->{_sheet_size}
+                or not exists $meta->{_sheet_material}
+                or not defined $meta->{_sheet_material}
+                or !$meta->{_sheet_material})
         {
             return $leaf;
         }
         # Okay, construct the materials hash
         my %art_materials = ();
         # Fluid art skins explicitly don't have a surface
-        # but since we aren't accepting an empty sheet_material
+        # but since we aren't accepting an empty _sheet_material
         # it should be defined as "skin" or "none".
-        if ($meta->{sheet_material} !~ /(skin|none)/i)
+        if ($meta->{_sheet_material} !~ /(skin|none)/i)
         {
             $art_materials{surface} = {};
-            $art_materials{surface}->{amount} = $meta->{sheet_size};
-            $art_materials{surface}->{id} = $meta->{sheet_material};
+            $art_materials{surface}->{amount} = $meta->{_sheet_size};
+            $art_materials{surface}->{id} = $meta->{_sheet_material};
             $art_materials{surface}->{from} = 'supplies';
         }
 
         $art_materials{fluid_art} = {};
         $art_materials{fluid_art}->{from} = 'made_parts';
-        # The sheet_size should be 0.5 or 1 only
-        if ($meta->{sheet_size} == 1) # A4 size sheet
+        # The _sheet_size should be 0.5 or 1 only
+        if ($meta->{_sheet_size} == 1) # A4 size sheet
         {
             $art_materials{fluid_art}->{id} = 'acrylic_pour-on_A4';
         }
-        elsif ($meta->{sheet_size} == 0.5) # A5 size sheet, half A4
+        elsif ($meta->{_sheet_size} == 0.5) # A5 size sheet, half A4
         {
             $art_materials{fluid_art}->{id} = 'acrylic_pour-on_A5';
         }
