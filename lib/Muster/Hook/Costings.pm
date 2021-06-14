@@ -185,7 +185,7 @@ sub process {
 
                 # Look in the reference database for metrics
                 my $cref = $self->_do_n_col_query('reference',
-                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND (title = '$item->{method}' OR name = '$item->{method}');");
+                    "SELECT minutes,width,length FROM flatfields WHERE page GLOB 'Craft/metrics/*' AND (title = '$item->{method}' OR bald_name = '$item->{method}');");
                 if ($cref and $cref->[0])
                 {
                     my $row = $cref->[0];
@@ -346,7 +346,7 @@ sub process {
                     # to record the *materials* cost for every piece of inventory.
                     # And because we need to use a consistent labour cost.
                     my $cref = $self->_do_n_col_query('reference',
-                        "SELECT labour_time,materials,materials_cost FROM flatfields WHERE page GLOB 'Craft/components/${from}/*' AND name = '$item->{id}';");
+                        "SELECT labour_time,materials,materials_cost FROM flatfields WHERE page GLOB 'Craft/components/${from}/*' AND bald_name = '$item->{id}';");
                     if ($cref and $cref->[0])
                     {
                         my $row = $cref->[0];
@@ -455,7 +455,7 @@ sub process {
         # to make it easier to add new postage profiles.
 
         my $cref = $self->_do_n_col_query('reference',
-            "SELECT packaging,postage,postage_offset FROM flatfields WHERE parent_page = 'Craft/components/postage' AND name = '$meta->{postage}';");
+            "SELECT packaging,postage,postage_offset FROM flatfields WHERE parent_page = 'Craft/components/postage' AND bald_name = '$meta->{postage}';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
@@ -568,7 +568,7 @@ sub process {
     if ($item_class)
     {
         my $cref = $self->_do_n_col_query('reference',
-            "SELECT prices FROM flatfields WHERE page GLOB 'Craft/market/*' AND name = '$item_class';");
+            "SELECT prices FROM flatfields WHERE page GLOB 'Craft/market/*' AND bald_name = '$item_class';");
         if ($cref and $cref->[0])
         {
             my $row = $cref->[0];
